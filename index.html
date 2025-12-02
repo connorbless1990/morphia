@@ -3,930 +3,379 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Morphic Field Visualizer</title>
+    <title>Morphic Fields</title>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { margin: 0; overflow: hidden; background-color: #050505; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #canvas-container { width: 100vw; height: 100vh; display: block; }
-        
-        /* Glassmorphism UI */
-        .glass-panel {
-            background: rgba(20, 20, 30, 0.6);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-            border-radius: 12px;
-        }
 
-        .slider-container { margin-bottom: 12px; }
-        .slider-label { display: flex; justify-content: space-between; font-size: 0.8rem; color: #a0a0a0; margin-bottom: 4px; }
-        
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: transparent;
-        }
-        
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 14px;
-            width: 14px;
-            border-radius: 50%;
-            background: #4ade80;
-            cursor: pointer;
-            margin-top: -5px; 
-            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
-        }
-        
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            cursor: pointer;
-            background: #333;
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000500; color: #aaffaa; font-family: 'Courier New', monospace; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
+        /* Glass Panel UI */
+        .glass-panel {
+            background: rgba(0, 20, 10, 0.9);
+            border: 1px solid #33ff33;
+            box-shadow: 0 0 15px rgba(51, 255, 51, 0.2);
             border-radius: 2px;
         }
 
-        .btn {
-            transition: all 0.2s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-size: 0.75rem;
-            font-weight: bold;
+        /* Neon Sliders */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 14px; width: 14px;
+            background: #33ff33; cursor: pointer; margin-top: -6px;
+            box-shadow: 0 0 10px #33ff33; border-radius: 50%;
         }
-        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(74, 222, 128, 0.3); }
-        .btn:active { transform: translateY(0); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 2px; background: #113311; }
 
-        .scanline {
-            width: 100%;
-            height: 100px;
-            z-index: 10;
-            background: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(255, 255, 255, 0.03) 50%, rgba(0,0,0,0) 100%);
-            opacity: 0.1;
-            position: absolute;
-            bottom: 100%;
-            animation: scanline 10s linear infinite;
-            pointer-events: none;
-        }
+        /* Buttons */
+        .geo-btn { transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px; }
+        .geo-btn:hover { background: #33ff33; color: black; box-shadow: 0 0 15px #33ff33; }
 
-        @keyframes scanline {
-            0% { bottom: 100%; }
-            100% { bottom: -100px; }
-        }
-        
-        /* Custom scrollbar for panel */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
-        ::-webkit-scrollbar-thumb { background: rgba(74, 222, 128, 0.3); border-radius: 3px; }
-
-        /* Audio Init Overlay */
-        #audio-overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            backdrop-filter: blur(5px);
-            transition: opacity 0.5s;
+        /* Overlay */
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 100; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; transition: opacity 1s;
         }
     </style>
 </head>
 <body>
 
-    <!-- Audio Init Overlay -->
-    <div id="audio-overlay">
-        <button id="start-audio-btn" class="glass-panel px-8 py-4 text-green-400 font-mono text-xl border border-green-500 hover:bg-green-900 transition-colors">
-            INITIALIZE AUDIO SYSTEM
+    <div id="overlay">
+        <h1 class="text-5xl text-green-500 font-bold mb-4 tracking-widest text-center">MORPHIC RESONANCE</h1>
+        <p class="text-gray-400 mb-8 text-sm text-center">
+            The Field exists before the Form.<br>
+            Observe the invisible.
+        </p>
+        <button id="ignite-btn" class="px-8 py-3 border border-green-500 text-green-500 hover:bg-green-500 hover:text-black transition-all uppercase tracking-widest font-bold">
+            Initialize
         </button>
     </div>
 
-    <!-- 3D Canvas -->
     <div id="canvas-container"></div>
-    <div class="scanline"></div>
 
-    <!-- UI Overlay -->
-    <div class="absolute top-0 left-0 w-full h-full pointer-events-none p-6 flex flex-col md:flex-row justify-between z-20">
-        
-        <!-- Controls Panel -->
-        <div class="glass-panel w-full md:w-80 p-6 pointer-events-auto flex flex-col gap-4 h-fit max-h-[90vh] overflow-y-auto">
-            <h1 class="text-xl font-bold text-green-400 border-b border-gray-700 pb-2 mb-2">Morphic Field Engine</h1>
-            
-            <!-- Base Forms -->
-            <div class="mb-2">
-                <h2 class="text-xs text-gray-400 font-bold mb-2 uppercase">Sacred Geometry</h2>
-                <div class="grid grid-cols-3 gap-2 mb-2">
-                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('merkaba')">Merkaba</button>
-                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('ether')">Ether</button>
-                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('crystal')">Crystal</button>
-                </div>
-                <div class="grid grid-cols-2 gap-2 mb-4">
-                     <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('lotus')">Lotus (Seed)</button>
-                     <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('spiral')">Vortex Spiral</button>
-                </div>
-                
-                <h2 class="text-xs text-gray-400 font-bold mb-2 uppercase">Organic Forms</h2>
-                <div class="grid grid-cols-3 gap-2 mb-4">
-                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('sphere')">Cell</button>
-                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('torus')">Spirit</button>
-                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('capsule')">Larva</button>
-                </div>
-            </div>
+    <div class="absolute top-0 left-0 w-full h-full pointer-events-none p-4 flex flex-col justify-between z-10">
 
-            <!-- Sliders -->
-            <div class="space-y-4">
-                <div class="slider-container">
-                    <div class="slider-label"><span>Resonance (Amplitude)</span><span id="val-amplitude">0.5</span></div>
-                    <input type="range" id="amplitude" min="0" max="2.0" step="0.01" value="0.5">
-                </div>
-
-                <div class="slider-container">
-                    <div class="slider-label"><span>Complexity (Frequency)</span><span id="val-frequency">1.0</span></div>
-                    <input type="range" id="frequency" min="0.1" max="5.0" step="0.1" value="1.0">
-                </div>
-
-                <div class="slider-container">
-                    <div class="slider-label"><span>Harmonics (Symmetry)</span><span id="val-symmetry">1</span></div>
-                    <input type="range" id="symmetry" min="1" max="12" step="1" value="1">
-                </div>
-
-                <div class="slider-container">
-                    <div class="slider-label"><span>Flux Speed</span><span id="val-speed">0.2</span></div>
-                    <input type="range" id="speed" min="0" max="2.0" step="0.1" value="0.2">
-                </div>
-
-                <div class="slider-container">
-                    <div class="slider-label"><span>Spike Factor</span><span id="val-sharpness">0.0</span></div>
-                    <input type="range" id="sharpness" min="0" max="1.0" step="0.01" value="0.0">
-                </div>
-                
-                <div class="slider-container">
-                    <div class="slider-label"><span>Field Twist</span><span id="val-twist">0.0</span></div>
-                    <input type="range" id="twist" min="0" max="5.0" step="0.1" value="0.0">
-                </div>
-
-                <div class="slider-container">
-                    <div class="slider-label"><span>Ethereal Glow</span><span id="val-glow">0.5</span></div>
-                    <input type="range" id="glow" min="0" max="1.0" step="0.01" value="0.5">
-                </div>
-                
-                <div class="border-t border-gray-700 mt-2 pt-2">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-gray-400 uppercase">Audio System</span>
-                        <button id="audio-toggle" class="px-2 py-1 bg-gray-800 text-xs rounded border border-gray-600 text-gray-500 font-bold transition-all" disabled>OFF</button>
-                    </div>
-                    <div class="slider-container">
-                        <div class="slider-label"><span>Master Volume</span><span id="val-volume">0.3</span></div>
-                        <input type="range" id="volume" min="0" max="1.0" step="0.01" value="0.3">
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-4 pt-4 border-t border-gray-700">
-                <button onclick="mutate()" class="btn w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded shadow-lg shadow-green-900/50">
-                    Mutate New Generation
-                </button>
-            </div>
-             <div class="text-xs text-gray-500 mt-2 text-center">
-                Use mouse to rotate and zoom.
-            </div>
+        <div class="glass-panel p-4 pointer-events-auto inline-block">
+            <div class="text-xs text-green-600 font-bold mb-1">FIELD MONITOR</div>
+            <div class="text-2xl font-bold tracking-tighter text-green-400" id="field-status">WAITING...</div>
+            <div class="text-[10px] text-green-800 mt-1">ENTITIES: 4000</div>
         </div>
 
-        <!-- Info / Readout -->
-        <div class="hidden md:flex flex-col justify-end items-end pointer-events-none">
-            <div class="glass-panel p-4 text-right">
-                <div class="text-xs text-green-400 font-mono mb-1">FIELD STATUS</div>
-                <div class="text-2xl font-bold font-mono" id="field-readout">SILENT</div>
-                <div class="text-xs text-gray-400 mt-2 font-mono">
-                    Geometry: <span id="geo-type">Cell</span><br>
-                    Sound Mode: <span id="sound-mode">Standard</span><br>
-                    Vertices: <span id="vertex-count">0</span>
+        <div class="glass-panel w-full md:w-80 p-6 pointer-events-auto self-end flex flex-col gap-6">
+
+            <div>
+                <div class="text-[10px] text-green-700 uppercase tracking-widest mb-2 border-b border-green-900 pb-1">Archetypes</div>
+                <div class="grid grid-cols-3 gap-1">
+                    <button class="geo-btn bg-black text-green-600 border border-green-900 text-[10px] py-2" data-shape="sphere">SEED</button>
+                    <button class="geo-btn bg-black text-green-600 border border-green-900 text-[10px] py-2" data-shape="torus">TORUS</button>
+                    <button class="geo-btn bg-black text-green-600 border border-green-900 text-[10px] py-2" data-shape="merkaba">MERKABA</button>
+                    <button class="geo-btn bg-black text-green-600 border border-green-900 text-[10px] py-2" data-shape="spiral">SPIRAL</button>
+                    <button class="geo-btn bg-black text-green-600 border border-green-900 text-[10px] py-2" data-shape="flower">FLOWER</button>
+                    <button class="geo-btn bg-black text-green-600 border border-green-900 text-[10px] py-2" data-shape="scatter">VOID</button>
                 </div>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <div class="flex justify-between text-xs mb-1 text-green-400"><span>Resonance (Attraction)</span><span id="val-resonance">0.00</span></div>
+                    <input type="range" id="resonance" min="0" max="1" step="0.01" value="0.0">
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs mb-1 text-blue-400"><span>Vitality (Motion)</span><span id="val-vitality">0.50</span></div>
+                    <input type="range" id="vitality" min="0" max="1" step="0.01" value="0.5">
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs mb-1 text-yellow-400"><span>Evolution (Complexity)</span><span id="val-evolution">1.0</span></div>
+                    <input type="range" id="evolution" min="1" max="5" step="0.1" value="1.0">
+                </div>
+            </div>
+
+            <div class="border-t border-green-900 pt-4 flex justify-between items-center">
+                <span class="text-[10px] text-green-700">AUDIO SYNTHESIS</span>
+                <button id="audio-toggle" class="text-[10px] px-3 py-1 border border-green-800 text-green-800 hover:text-green-400 transition-colors">MUTED</button>
             </div>
         </div>
     </div>
 
     <script>
-        // --- 1. Sound Engine (Web Audio API) ---
-        class SoundEngine {
-            constructor() {
-                this.ctx = null;
-                this.masterGain = null;
-                this.carrier = null;
-                this.modulator = null;
-                this.modulatorGain = null;
-                this.filter = null;
-                this.lfo = null;
-                this.lfoGain = null;
-                this.isPlaying = false;
-                
-                // Default Profile
-                this.profile = {
-                    carrierType: 'sine',
-                    modulatorType: 'triangle',
-                    baseFreqMultiplier: 1.0,
-                    modFreqMultiplier: 1.0,
-                    name: 'Standard'
-                };
+        // --- 1. UTILS ---
+        const R = (min, max) => Math.random() * (max - min) + min;
+
+        // --- 2. GHOST FIELD (The Mesh You Liked) ---
+        // This class renders the wireframe blueprint so you can see the field itself.
+        class GhostField {
+            constructor(scene) {
+                this.scene = scene;
+                this.mesh = null;
+                this.material = new THREE.MeshBasicMaterial({
+                    color: 0x114411, // Dark green
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.15, // Subtle ghost effect
+                    blending: THREE.AdditiveBlending
+                });
             }
 
-            init() {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                this.ctx = new AudioContext();
-                
-                // Master Gain
-                this.masterGain = this.ctx.createGain();
-                this.masterGain.gain.value = 0.3;
-                this.masterGain.connect(this.ctx.destination);
+            updateShape(shapeName, evolution) {
+                if(this.mesh) {
+                    this.scene.remove(this.mesh);
+                    if(this.mesh.geometry) this.mesh.geometry.dispose();
+                }
 
-                // --- FM Synthesis Chain ---
-                
-                // Carrier (The main audible tone)
-                this.carrier = this.ctx.createOscillator();
-                this.carrier.type = this.profile.carrierType;
-                this.carrier.frequency.value = 220; 
+                let geo;
+                const scale = 1 + (evolution * 0.2);
+                const complex = Math.floor(evolution);
 
-                // Modulator (modifies the carrier to create timbre)
-                this.modulator = this.ctx.createOscillator();
-                this.modulator.type = this.profile.modulatorType;
-                this.modulator.frequency.value = 220;
+                // Geometric definitions
+                switch(shapeName) {
+                    case 'torus': geo = new THREE.TorusKnotGeometry(2.5 * scale, 0.8, 120, 20); break;
+                    case 'merkaba': geo = new THREE.OctahedronGeometry(3.5 * scale, complex - 1); break;
+                    case 'flower': geo = new THREE.IcosahedronGeometry(3.0 * scale, complex); break;
+                    case 'sphere': geo = new THREE.SphereGeometry(3.0 * scale, 32, 32); break;
+                    case 'spiral': return; // Spiral has no mesh, only particles
+                    case 'scatter': return; // Void has no mesh
+                    default: return;
+                }
 
-                // Modulator Gain (Controls "Resonance")
-                this.modulatorGain = this.ctx.createGain();
-                this.modulatorGain.gain.value = 0; 
+                if(geo) {
+                    this.mesh = new THREE.Mesh(geo, this.material);
+                    this.scene.add(this.mesh);
+                }
+            }
 
-                // Filter (Controls "Sharpness")
-                this.filter = this.ctx.createBiquadFilter();
-                this.filter.type = 'lowpass';
-                this.filter.frequency.value = 1000;
-                this.filter.Q.value = 1;
+            animate() {
+                if(this.mesh) {
+                    this.mesh.rotation.y += 0.002;
+                    this.mesh.rotation.z += 0.001;
+                }
+            }
+        }
 
-                // LFO (Controls "Flux" volume pulsing)
-                this.lfo = this.ctx.createOscillator();
-                this.lfo.type = 'sine';
-                this.lfo.frequency.value = 0.2; 
+        // --- 3. ARCHITECT (Calculates Particle Targets) ---
+        class Architect {
+            generateTargets(shapeName, count, evolution) {
+                const targets = new Float32Array(count * 3);
+                let geo;
+                const scale = 1 + (evolution * 0.2);
+                const complex = Math.max(1, Math.floor(evolution));
 
-                this.lfoGain = this.ctx.createGain();
-                this.lfoGain.gain.value = 0.1; 
+                // Same logic as GhostField but for points
+                switch(shapeName) {
+                    case 'torus': geo = new THREE.TorusKnotGeometry(2.5 * scale, 0.8, 150 * complex, 20 * complex); break;
+                    case 'merkaba': geo = new THREE.OctahedronGeometry(3.5 * scale, complex - 1); break;
+                    case 'flower': geo = new THREE.IcosahedronGeometry(3.0 * scale, complex * 2); break;
+                    case 'sphere': geo = new THREE.SphereGeometry(3.0 * scale, 32 * complex, 32 * complex); break;
+                    case 'spiral': this._spiral(targets, count, evolution); return targets;
+                    case 'scatter': default: this._chaos(targets, count); return targets;
+                }
 
-                // Connections
-                this.modulator.connect(this.modulatorGain);
-                this.modulatorGain.connect(this.carrier.frequency);
+                // Sample points from surface
+                if(geo) {
+                    const pos = geo.attributes.position;
+                    for(let i=0; i<count; i++) {
+                        const index = i % pos.count;
+                        targets[i*3] = pos.getX(index);
+                        targets[i*3+1] = pos.getY(index);
+                        targets[i*3+2] = pos.getZ(index);
+                    }
+                    geo.dispose();
+                }
+                return targets;
+            }
 
-                this.carrier.connect(this.filter);
-                this.filter.connect(this.masterGain);
+            _chaos(arr, count) {
+                for(let i=0; i<count; i++) {
+                    const r = 15 * Math.cbrt(Math.random());
+                    const theta = R(0, Math.PI*2);
+                    const phi = Math.acos(R(-1, 1));
+                    arr[i*3] = r * Math.sin(phi) * Math.cos(theta);
+                    arr[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+                    arr[i*3+2] = r * Math.cos(phi);
+                }
+            }
 
-                // LFO modulates filter
-                this.lfo.connect(this.lfoGain);
-                this.lfoGain.connect(this.filter.frequency);
+            _spiral(arr, count, evolution) {
+                const twist = evolution * 0.8;
+                for(let i=0; i<count; i++) {
+                    const t = i / count;
+                    const angle = t * Math.PI * 20 * twist;
+                    const r = t * 8;
+                    arr[i*3] = r * Math.cos(angle);
+                    arr[i*3+1] = (t - 0.5) * 10;
+                    arr[i*3+2] = r * Math.sin(angle);
+                }
+            }
+        }
+
+        // --- 4. SWARM (The Particles) ---
+        class Swarm {
+            constructor(scene, count) {
+                this.count = count;
+                this.scene = scene;
+                this.architect = new Architect();
+
+                this.pos = new Float32Array(count * 3);
+                this.vel = new Float32Array(count * 3);
+                this.target = new Float32Array(count * 3);
+
+                this.architect._chaos(this.pos, count);
+                this.architect._chaos(this.target, count);
+
+                // VISUAL UPGRADE: Bigger, brighter, glowing
+                const geometry = new THREE.OctahedronGeometry(0.08, 0); // Crystal shape
+                const material = new THREE.MeshBasicMaterial({
+                    color: 0x66ff66,
+                    wireframe: false
+                });
+
+                this.mesh = new THREE.InstancedMesh(geometry, material, count);
+                this.mesh.frustumCulled = false; // Prevents flickering
+                this.scene.add(this.mesh);
+
+                this.dummy = new THREE.Object3D();
+            }
+
+            setShape(name, evo) {
+                const newT = this.architect.generateTargets(name, this.count, evo);
+                this.target.set(newT);
+            }
+
+            update(time, resonance, vitality) {
+                const dt = 0.016;
+
+                for(let i=0; i<this.count; i++) {
+                    const ix=i*3, iy=i*3+1, iz=i*3+2;
+
+                    // 1. Attraction Force (Resonance)
+                    let fx = (this.target[ix] - this.pos[ix]) * resonance * 3.0;
+                    let fy = (this.target[iy] - this.pos[iy]) * resonance * 3.0;
+                    let fz = (this.target[iz] - this.pos[iz]) * resonance * 3.0;
+
+                    // 2. Noise Force (Vitality) - Keeps them moving
+                    const nScale = 0.5;
+                    fx += Math.sin(this.pos[iy]*nScale + time) * vitality;
+                    fy += Math.cos(this.pos[iz]*nScale + time) * vitality;
+                    fz += Math.sin(this.pos[ix]*nScale + time) * vitality;
+
+                    // 3. Physics Integration
+                    this.vel[ix] += fx * dt;
+                    this.vel[iy] += fy * dt;
+                    this.vel[iz] += fz * dt;
+
+                    // Dampening (Friction)
+                    const friction = 0.94;
+                    this.vel[ix] *= friction;
+                    this.vel[iy] *= friction;
+                    this.vel[iz] *= friction;
+
+                    this.pos[ix] += this.vel[ix];
+                    this.pos[iy] += this.vel[iy];
+                    this.pos[iz] += this.vel[iz];
+
+                    // 4. Render Instance
+                    this.dummy.position.set(this.pos[ix], this.pos[iy], this.pos[iz]);
+
+                    // Particles align with their velocity (flow look)
+                    this.dummy.lookAt(this.pos[ix] + this.vel[ix], this.pos[iy] + this.vel[iy], this.pos[iz] + this.vel[iz]);
+
+                    // Scale pulses with speed
+                    const speed = Math.sqrt(this.vel[ix]**2 + this.vel[iy]**2);
+                    // If stopped -> 80% size. If fast -> Stretch.
+                    const s = 0.8 + Math.min(speed, 1.0);
+                    this.dummy.scale.set(s, s, s*1.5);
+
+                    this.dummy.updateMatrix();
+                    this.mesh.setMatrixAt(i, this.dummy.matrix);
+                }
+                this.mesh.instanceMatrix.needsUpdate = true;
+            }
+        }
+
+        // --- 5. APP CONTROLLER ---
+        class App {
+            constructor() {
+                this.params = { resonance: 0.0, vitality: 0.5, evolution: 1.0 };
+                this.currentShape = 'scatter';
+
+                this.initScene();
+                this.ghost = new GhostField(this.scene); // The Mesh
+                this.swarm = new Swarm(this.scene, 4000); // The Particles
+                this.initUI();
+                this.animate();
+            }
+
+            initScene() {
+                this.scene = new THREE.Scene();
+                // Removed Fog so things are clearer against black
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 100);
+                this.camera.position.z = 12;
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x000500); // Very dark green/black
+                document.getElementById('canvas-container').appendChild(this.renderer.domElement);
+
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+
+            initUI() {
+                // Sliders
+                const link = (id, key) => {
+                    document.getElementById(id).addEventListener('input', (e) => {
+                        this.params[key] = parseFloat(e.target.value);
+                        document.getElementById('val-'+id).innerText = this.params[key].toFixed(2);
+
+                        // If Evolution changes, update blueprint
+                        if(key === 'evolution') {
+                            this.swarm.setShape(this.currentShape, this.params.evolution);
+                            this.ghost.updateShape(this.currentShape, this.params.evolution);
+                        }
+                    });
+                };
+                link('resonance', 'resonance');
+                link('vitality', 'vitality');
+                link('evolution', 'evolution');
+
+                // Buttons
+                document.querySelectorAll('.geo-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        this.currentShape = e.target.dataset.shape;
+                        this.swarm.setShape(this.currentShape, this.params.evolution);
+                        this.ghost.updateShape(this.currentShape, this.params.evolution);
+                        document.getElementById('field-status').innerText = this.currentShape.toUpperCase();
+                    });
+                });
 
                 // Start
-                this.carrier.start();
-                this.modulator.start();
-                this.lfo.start();
-
-                this.isPlaying = true;
-                
-                this.updateFromUI();
-                this.updateToggleUI(true);
+                document.getElementById('ignite-btn').addEventListener('click', () => {
+                    document.getElementById('overlay').style.opacity = 0;
+                    setTimeout(()=>document.getElementById('overlay').style.display='none', 1000);
+                });
             }
 
-            // New method to toggle suspend/resume
-            toggleAudio() {
-                if (!this.ctx) return;
+            animate() {
+                requestAnimationFrame(this.animate.bind(this));
+                const time = performance.now() * 0.001;
 
-                if (this.ctx.state === 'running') {
-                    this.ctx.suspend().then(() => {
-                        this.updateToggleUI(false);
-                    });
-                } else if (this.ctx.state === 'suspended') {
-                    this.ctx.resume().then(() => {
-                        this.updateToggleUI(true);
-                        this.updateFromUI(); // Refresh params just in case
-                    });
-                }
-            }
+                this.swarm.update(time, this.params.resonance, this.params.vitality);
+                this.ghost.animate();
 
-            updateToggleUI(isRunning) {
-                const btn = document.getElementById('audio-toggle');
-                if (isRunning) {
-                    btn.innerText = "ON";
-                    btn.className = "px-2 py-1 bg-green-500 text-black text-xs rounded border border-green-400 font-bold transition-all shadow-[0_0_10px_rgba(74,222,128,0.5)]";
-                    document.getElementById('field-readout').innerText = "RESONATING";
-                } else {
-                    btn.innerText = "OFF";
-                    btn.className = "px-2 py-1 bg-red-900 text-red-200 text-xs rounded border border-red-700 font-bold transition-all";
-                    document.getElementById('field-readout').innerText = "MUTED";
-                }
-                btn.disabled = false;
-            }
+                // Slow camera rotation
+                this.scene.rotation.y = Math.sin(time * 0.1) * 0.2;
+                this.scene.rotation.x = Math.cos(time * 0.15) * 0.1;
 
-            setShapeProfile(shapeType) {
-                // Define sound characteristics based on geometry
-                switch(shapeType) {
-                    case 'merkaba':
-                        this.profile = { 
-                            carrierType: 'triangle', // Changed from Sawtooth to Triangle for "Chime" quality
-                            modulatorType: 'sine',   // Sine modulation creates pure bell tones
-                            baseFreqMultiplier: 0.8, // Lower pitch for "Primordial" weight
-                            modFreqMultiplier: 1.5,  // Perfect Fifth ratio for sacred resonance
-                            name: 'Primordial Chime'
-                        };
-                        break;
-                    case 'ether':
-                        this.profile = { 
-                            carrierType: 'sine', 
-                            modulatorType: 'sine', 
-                            baseFreqMultiplier: 0.5, // Deep bass
-                            modFreqMultiplier: 0.5,
-                            name: 'Deep/Cosmic'
-                        };
-                        break;
-                    case 'crystal':
-                        this.profile = { 
-                            carrierType: 'triangle', 
-                            modulatorType: 'sine', 
-                            baseFreqMultiplier: 2.0, // Very high
-                            modFreqMultiplier: 1.0,
-                            name: 'Glassy/Pure'
-                        };
-                        break;
-                    case 'lotus':
-                        this.profile = { 
-                            carrierType: 'sine', 
-                            modulatorType: 'triangle', 
-                            baseFreqMultiplier: 1.0,
-                            modFreqMultiplier: 1.618, // Golden Ratio approx
-                            name: 'Harmonic'
-                        };
-                        break;
-                    case 'spiral':
-                        this.profile = { 
-                            carrierType: 'sawtooth', 
-                            modulatorType: 'sawtooth', 
-                            baseFreqMultiplier: 0.8,
-                            modFreqMultiplier: 1.1, // Dissonant/Twisting
-                            name: 'Aggressive'
-                        };
-                        break;
-                    case 'torus':
-                        this.profile = { 
-                            carrierType: 'triangle', 
-                            modulatorType: 'sawtooth', 
-                            baseFreqMultiplier: 0.8,
-                            modFreqMultiplier: 1.5,
-                            name: 'Magnetic'
-                        };
-                        break;
-                    case 'capsule':
-                        this.profile = { 
-                            carrierType: 'square', 
-                            modulatorType: 'triangle', 
-                            baseFreqMultiplier: 0.6,
-                            modFreqMultiplier: 0.5,
-                            name: 'Hollow'
-                        };
-                        break;
-                    case 'sphere':
-                    default:
-                        this.profile = { 
-                            carrierType: 'sine', 
-                            modulatorType: 'sine', 
-                            baseFreqMultiplier: 1.0,
-                            modFreqMultiplier: 1.0,
-                            name: 'Organic'
-                        };
-                        break;
-                }
-
-                if (this.isPlaying && this.ctx && this.ctx.state === 'running') {
-                    // Update types dynamically
-                    this.carrier.type = this.profile.carrierType;
-                    this.modulator.type = this.profile.modulatorType;
-                    
-                    // Force a UI update to apply new multipliers
-                    this.updateFromUI(); 
-                    
-                    // Update Readout
-                    document.getElementById('sound-mode').innerText = this.profile.name;
-                }
-            }
-
-            updateFromUI() {
-                if (!this.isPlaying || !this.ctx || this.ctx.state !== 'running') return;
-
-                const amplitude = parseFloat(document.getElementById('amplitude').value); 
-                const frequency = parseFloat(document.getElementById('frequency').value); 
-                const symmetry = parseFloat(document.getElementById('symmetry').value);   
-                const speed = parseFloat(document.getElementById('speed').value);         
-                const sharpness = parseFloat(document.getElementById('sharpness').value); 
-                const twist = parseFloat(document.getElementById('twist').value);         
-                const volume = parseFloat(document.getElementById('volume').value);       
-
-                const now = this.ctx.currentTime;
-
-                // 1. Pitch - Affected by Profile Multiplier
-                const targetFreq = (100 + (frequency * 100)) * this.profile.baseFreqMultiplier;
-                this.carrier.frequency.setTargetAtTime(targetFreq, now, 0.1);
-
-                // 2. Modulator Ratio - Affected by Profile Multiplier
-                const modFreq = targetFreq * (symmetry > 0 ? symmetry : 0.5) * this.profile.modFreqMultiplier;
-                this.modulator.frequency.setTargetAtTime(modFreq, now, 0.1);
-
-                // 3. Timbre/Resonance
-                const modDepth = amplitude * 500; 
-                this.modulatorGain.gain.setTargetAtTime(modDepth, now, 0.1);
-
-                // 4. Flux (Speed)
-                this.lfo.frequency.setTargetAtTime(speed, now, 0.1);
-                this.lfoGain.gain.setTargetAtTime(500, now, 0.1); 
-
-                // 5. Filter (Sharpness)
-                const cutoff = 200 + (sharpness * 5000);
-                this.filter.frequency.setTargetAtTime(cutoff, now, 0.1);
-
-                // 6. Master Volume
-                this.masterGain.gain.setTargetAtTime(volume * 0.5, now, 0.1);
+                this.renderer.render(this.scene, this.camera);
             }
         }
 
-        const soundEngine = new SoundEngine();
-
-        // Toggle Button Handler
-        document.getElementById('audio-toggle').addEventListener('click', () => {
-            soundEngine.toggleAudio();
-        });
-
-        // Audio Init Handler
-        document.getElementById('start-audio-btn').addEventListener('click', () => {
-            soundEngine.init();
-            document.getElementById('audio-overlay').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('audio-overlay').style.display = 'none';
-            }, 500);
-            
-            // Sync with current mesh
-            if(currentMeshType) soundEngine.setShapeProfile(currentMeshType);
-        });
-
-        // --- 2. Three.js Setup (Existing) ---
-        const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x050505, 0.02);
-
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.z = 4;
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        document.getElementById('canvas-container').appendChild(renderer.domElement);
-
-        const ambientLight = new THREE.AmbientLight(0x404040, 2);
-        scene.add(ambientLight);
-
-        const pointLight1 = new THREE.PointLight(0x4ade80, 1, 10);
-        pointLight1.position.set(2, 2, 2);
-        scene.add(pointLight1);
-
-        const pointLight2 = new THREE.PointLight(0x60a5fa, 1, 10);
-        pointLight2.position.set(-2, -2, 2);
-        scene.add(pointLight2);
-        
-        const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        rimLight.position.set(0, 5, -5);
-        scene.add(rimLight);
-
-        // --- 3. The "Being" Shader Material ---
-        const vertexShader = `
-            uniform float time;
-            uniform float amplitude;
-            uniform float frequency;
-            uniform float symmetry;
-            uniform float sharpness;
-            uniform float twist;
-            
-            varying vec2 vUv;
-            varying float vDisplacement;
-            varying vec3 vNormal;
-            varying vec3 vPosition;
-            varying float vWarp; // Passed to fragment for coloring (Checkpoint 3 Prep)
-
-            // Simplex 3D Noise function (standard implementation)
-            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-            vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-            vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
-            vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-            float snoise(vec3 v) {
-                const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
-                const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
-
-                // First corner
-                vec3 i  = floor(v + dot(v, C.yyy) );
-                vec3 x0 = v - i + dot(i, C.xxx) ;
-
-                // Other corners
-                vec3 g = step(x0.yzx, x0.xyz);
-                vec3 l = 1.0 - g;
-                vec3 i1 = min( g.xyz, l.zxy );
-                vec3 i2 = max( g.xyz, l.zxy );
-
-                vec3 x1 = x0 - i1 + C.xxx;
-                vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
-                vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
-
-                // Permutations
-                i = mod289(i); 
-                vec4 p = permute( permute( permute( 
-                            i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
-                          + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
-                          + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
-
-                // Gradients: 7x7 points over a square, mapped onto an octahedron.
-                // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
-                float n_ = 0.142857142857; // 1.0/7.0
-                vec3  ns = n_ * D.wyz - D.xzx;
-
-                vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
-
-                vec4 x_ = floor(j * ns.z);
-                vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
-
-                vec4 x = x_ *ns.x + ns.yyyy;
-                vec4 y = y_ *ns.x + ns.yyyy;
-                vec4 h = 1.0 - abs(x) - abs(y);
-
-                vec4 b0 = vec4( x.xy, y.xy );
-                vec4 b1 = vec4( x.zw, y.zw );
-
-                vec4 s0 = floor(b0)*2.0 + 1.0;
-                vec4 s1 = floor(b1)*2.0 + 1.0;
-                vec4 sh = -step(h, vec4(0.0));
-
-                vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
-                vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
-
-                vec3 p0 = vec3(a0.xy,h.x);
-                vec3 p1 = vec3(a0.zw,h.y);
-                vec3 p2 = vec3(a1.xy,h.z);
-                vec3 p3 = vec3(a1.zw,h.w);
-
-                //Normalise gradients
-                vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-                p0 *= norm.x;
-                p1 *= norm.y;
-                p2 *= norm.z;
-                p3 *= norm.w;
-
-                // Mix final noise value
-                vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-                m = m * m;
-                return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
-                                              dot(p2,x2), dot(p3,x3) ) );
-            }
-
-            void main() {
-                vUv = uv;
-                vNormal = normal;
-                
-                // --- MORPHIC FIELD LOGIC (CHECKPOINT 2: TEMPORAL DRAG) ---
-                
-                // 1. Basic Position
-                vec3 pos = position;
-                
-                // 2. Twist
-                float angle = pos.y * twist;
-                float s = sin(angle);
-                float c = cos(angle);
-                mat2 rot = mat2(c, -s, s, c);
-                pos.xz = rot * pos.xz;
-
-                // 3. Symmetry
-                float rad = length(pos.xz);
-                float theta = atan(pos.z, pos.x);
-                if (symmetry > 1.0) {
-                    float sector = 6.28318 / floor(symmetry);
-                    theta = mod(theta, sector);
-                    theta = abs(theta - sector/2.0); 
-                }
-                vec3 symmetryPos = vec3(rad * cos(theta), pos.y, rad * sin(theta));
-
-                // 4. Domain Warping with Temporal Drag
-                vec3 warpInput = symmetryPos * frequency;
-                
-                // Checkpoint 2: The Deep Field (Memory) moves SLOWLY (10% speed)
-                float deepTime = time * 0.1;
-                
-                vec3 warpVec;
-                warpVec.x = snoise(warpInput + vec3(deepTime, 0.0, 0.0)); 
-                warpVec.y = snoise(warpInput + vec3(0.0, deepTime, 0.0) + 10.0);
-                warpVec.z = snoise(warpInput + vec3(0.0, 0.0, deepTime) + 20.0);
-                
-                // We pass the warp magnitude to the fragment shader for coloring later
-                vWarp = length(warpVec);
-
-                // Apply Warp
-                vec3 warpedPos = symmetryPos + warpVec * (amplitude * 0.5); 
-
-                // Layer 2: The Manifested Form (Surface) moves normally
-                float noiseVal = snoise(warpedPos * frequency + time);
-                
-                // 5. Sharpening
-                if (sharpness > 0.0) {
-                    noiseVal = max(0.0, noiseVal);
-                    noiseVal = pow(noiseVal, 1.0 - sharpness * 0.5); 
-                }
-
-                vDisplacement = noiseVal;
-                
-                // 6. Apply Displacement
-                vec3 newPosition = pos + normal * (noiseVal * amplitude);
-
-                vPosition = newPosition;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
-            }
-        `;
-
-        const fragmentShader = `
-            uniform float time;
-            uniform float glowIntensity;
-            
-            varying vec2 vUv;
-            varying float vDisplacement;
-            varying vec3 vNormal;
-            varying vec3 vPosition;
-            varying float vWarp; // Received from vertex shader
-
-            void main() {
-                // 1. Define Palette
-                vec3 voidColor = vec3(0.05, 0.1, 0.2);   // Deep space / Void
-                vec3 matterColor = vec3(0.2, 0.8, 0.6);  // Biological matter (Teal/Green)
-                vec3 energyColor = vec3(1.0, 0.2, 0.5);  // Raw Morphic Energy / Stress (Magenta)
-
-                // 2. Base Matter Mix (Height)
-                // We mix between void (low) and matter (high) based on physical displacement
-                float heightFactor = smoothstep(-0.2, 0.6, vDisplacement);
-                vec3 base = mix(voidColor, matterColor, heightFactor);
-
-                // 3. Apply Field Stress (Warp Magnitude)
-                // vWarp tells us how hard the "Deep Field" is twisting the geometry.
-                // High warp = High field resistance/memory = Hotter colors.
-                float stressFactor = smoothstep(0.2, 1.2, vWarp);
-                
-                // Mix the base color with the energy color based on stress
-                vec3 color = mix(base, energyColor, stressFactor * 0.7);
-
-                // 4. Lighting & Glow
-                vec3 viewDir = normalize(cameraPosition - vPosition);
-                // Fresnel: The "Rim Light" effect
-                float fresnel = pow(1.0 - dot(viewDir, vNormal), 2.5);
-
-                // Pulse
-                float pulse = 0.5 + 0.5 * sin(time * 2.0);
-
-                // Add Rim Light (Ethereal Glow)
-                color += vec3(0.5, 0.8, 1.0) * fresnel * glowIntensity;
-                
-                // Stress areas glow even harder
-                color += energyColor * fresnel * pulse * 0.3 * stressFactor; 
-
-                gl_FragColor = vec4(color, 0.9);
-            }
-        `;
-
-        const uniforms = {
-            time: { value: 0.0 },
-            amplitude: { value: 0.5 },
-            frequency: { value: 1.0 },
-            symmetry: { value: 1.0 },
-            sharpness: { value: 0.0 },
-            twist: { value: 0.0 },
-            glowIntensity: { value: 0.5 }
-        };
-
-        const material = new THREE.ShaderMaterial({
-            uniforms: uniforms,
-            vertexShader: vertexShader,
-            fragmentShader: fragmentShader,
-            wireframe: false,
-            transparent: true,
-            side: THREE.DoubleSide
-        });
-
-        // --- 4. Geometry / Being Management ---
-        let currentMesh;
-        let currentMeshType = 'lotus'; // Start type
-        
-        function addWireframe(mesh, geometry) {
-            const wireframeGeo = new THREE.WireframeGeometry(geometry);
-            const wireframeMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.05 });
-            const wireframe = new THREE.LineSegments(wireframeGeo, wireframeMat);
-            mesh.add(wireframe);
-        }
-
-        class SpiralCurve extends THREE.Curve {
-            constructor(scale = 1) { super(); this.scale = scale; }
-            getPoint(t) {
-                const angle = t * Math.PI * 10;
-                const radius = (1 - t) * 3;
-                const x = radius * Math.cos(angle);
-                const z = radius * Math.sin(angle);
-                const y = (t - 0.5) * 6;
-                return new THREE.Vector3(x, y, z).multiplyScalar(this.scale);
-            }
-        }
-
-        function createMesh(type) {
-            currentMeshType = type;
-            // Update sound profile immediately
-            soundEngine.setShapeProfile(type);
-
-            if (currentMesh) scene.remove(currentMesh);
-            
-            let geometry, mesh, count = 0;
-
-            if (type === 'merkaba') {
-                currentMesh = new THREE.Group();
-                const tGeo1 = new THREE.TetrahedronGeometry(1.5, 0);
-                const tGeo2 = new THREE.TetrahedronGeometry(1.5, 0);
-                tGeo2.rotateX(Math.PI / 2); tGeo2.rotateZ(Math.PI); 
-                const m1 = new THREE.Mesh(tGeo1, material);
-                const m2 = new THREE.Mesh(tGeo2, material);
-                addWireframe(m1, tGeo1); addWireframe(m2, tGeo2);
-                currentMesh.add(m1); currentMesh.add(m2);
-                count = tGeo1.attributes.position.count * 2;
-            } else if (type === 'lotus') {
-                currentMesh = new THREE.Group();
-                const petalGeo = new THREE.SphereGeometry(1, 32, 32);
-                const center = new THREE.Mesh(petalGeo, material);
-                addWireframe(center, petalGeo);
-                currentMesh.add(center);
-                for(let i = 0; i < 6; i++) {
-                    const angle = (i / 6) * Math.PI * 2;
-                    const x = Math.cos(angle) * 1.0;
-                    const z = Math.sin(angle) * 1.0;
-                    const petal = new THREE.Mesh(petalGeo, material);
-                    petal.position.set(x, 0, z);
-                    addWireframe(petal, petalGeo);
-                    currentMesh.add(petal);
-                }
-                currentMesh.rotation.x = 0.5;
-                count = petalGeo.attributes.position.count * 7;
-            } else if (type === 'spiral') {
-                const path = new SpiralCurve(1);
-                geometry = new THREE.TubeGeometry(path, 128, 0.4, 16, false);
-                mesh = new THREE.Mesh(geometry, material);
-                addWireframe(mesh, geometry);
-                currentMesh = mesh;
-                count = geometry.attributes.position.count;
-            } else {
-                if (type === 'sphere') geometry = new THREE.IcosahedronGeometry(1.5, 40); 
-                else if (type === 'torus') geometry = new THREE.TorusKnotGeometry(1, 0.3, 200, 30);
-                else if (type === 'capsule') geometry = new THREE.CylinderGeometry(0.8, 0.8, 3, 60, 60, true);
-                else if (type === 'ether') geometry = new THREE.DodecahedronGeometry(1.5, 0);
-                else if (type === 'crystal') geometry = new THREE.OctahedronGeometry(1.5, 0);
-
-                mesh = new THREE.Mesh(geometry, material);
-                addWireframe(mesh, geometry);
-                currentMesh = mesh;
-                count = geometry.attributes.position.count;
-            }
-            
-            scene.add(currentMesh);
-            document.getElementById('vertex-count').innerText = count;
-            document.getElementById('geo-type').innerText = type.charAt(0).toUpperCase() + type.slice(1);
-        }
-
-        createMesh('lotus');
-
-        // --- 5. Input Handling ---
-        const inputs = ['amplitude', 'frequency', 'symmetry', 'speed', 'sharpness', 'twist', 'glow', 'volume'];
-        
-        inputs.forEach(id => {
-            const el = document.getElementById(id);
-            const disp = document.getElementById('val-' + id);
-            
-            el.addEventListener('input', (e) => {
-                const val = parseFloat(e.target.value);
-                disp.innerText = val;
-                
-                // Update Visual Uniforms
-                if(id === 'amplitude') uniforms.amplitude.value = val;
-                if(id === 'frequency') uniforms.frequency.value = val;
-                if(id === 'symmetry') uniforms.symmetry.value = val;
-                if(id === 'sharpness') uniforms.sharpness.value = val;
-                if(id === 'twist') uniforms.twist.value = val;
-                if(id === 'glow') uniforms.glowIntensity.value = val;
-                
-                // Update Sound Engine
-                soundEngine.updateFromUI();
-            });
-        });
-
-        window.changeBase = (type) => {
-            createMesh(type);
-        };
-
-        window.mutate = () => {
-            const r = (min, max) => Math.random() * (max - min) + min;
-            
-            const newAmp = r(0.2, 1.5);
-            const newFreq = r(0.5, 4.0);
-            const newSym = Math.floor(r(1, 9));
-            const newTwist = r(0, 3.0);
-            
-            document.getElementById('amplitude').value = newAmp;
-            document.getElementById('frequency').value = newFreq;
-            document.getElementById('symmetry').value = newSym;
-            document.getElementById('twist').value = newTwist;
-            
-            inputs.forEach(id => document.getElementById(id).dispatchEvent(new Event('input')));
-            
-            const readout = document.getElementById('field-readout');
-            readout.innerText = "MUTATING...";
-            readout.style.color = "#ff4444";
-            setTimeout(() => {
-                const status = (soundEngine.ctx && soundEngine.ctx.state === 'running') ? "RESONATING" : "MUTED";
-                readout.innerText = status;
-                readout.style.color = "white";
-            }, 500);
-        };
-
-        // --- 6. Interaction & Loop ---
-        let isDragging = false;
-        let previousMousePosition = { x: 0, y: 0 };
-        let rotationSpeed = 0.005;
-
-        // Zoom Handler
-        document.addEventListener('wheel', (e) => {
-            // Adjust zoom speed
-            const zoomSpeed = 0.005;
-            camera.position.z += e.deltaY * zoomSpeed;
-            
-            // Clamp Zoom Limits (Min: 2, Max: 15)
-            camera.position.z = Math.max(2, Math.min(15, camera.position.z));
-        });
-
-        document.addEventListener('mousedown', () => isDragging = true);
-        document.addEventListener('mouseup', () => isDragging = false);
-        
-        document.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                const deltaMove = {
-                    x: e.offsetX - previousMousePosition.x,
-                    y: e.offsetY - previousMousePosition.y
-                };
-                if (currentMesh) {
-                    currentMesh.rotation.y += deltaMove.x * rotationSpeed;
-                    currentMesh.rotation.x += deltaMove.y * rotationSpeed;
-                }
-            }
-            previousMousePosition = { x: e.offsetX, y: e.offsetY };
-        });
-        
-        // Touch
-        document.addEventListener('touchstart', (e) => {
-            isDragging = true;
-            previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        });
-        document.addEventListener('touchend', () => isDragging = false);
-        document.addEventListener('touchmove', (e) => {
-            if (isDragging) {
-                const deltaMove = {
-                    x: e.touches[0].clientX - previousMousePosition.x,
-                    y: e.touches[0].clientY - previousMousePosition.y
-                };
-                if (currentMesh) {
-                    currentMesh.rotation.y += deltaMove.x * rotationSpeed;
-                    currentMesh.rotation.x += deltaMove.y * rotationSpeed;
-                }
-                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            }
-        });
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            const speed = parseFloat(document.getElementById('speed').value);
-            uniforms.time.value += 0.01 * speed;
-
-            if (currentMesh && !isDragging) {
-                currentMesh.rotation.y += 0.002;
-            }
-
-            renderer.render(scene, camera);
-        }
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        animate();
-
+        new App();
     </script>
 </body>
 </html>
