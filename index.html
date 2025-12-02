@@ -8,13 +8,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: #050505; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #canvas-container { width: 100vw; height: 100vh; display: block; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         
-        /* Glassmorphism UI */
         .glass-panel {
-            background: rgba(20, 20, 30, 0.6);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: rgba(20, 20, 30, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
             border-radius: 12px;
@@ -23,194 +22,256 @@
         .slider-container { margin-bottom: 12px; }
         .slider-label { display: flex; justify-content: space-between; font-size: 0.8rem; color: #a0a0a0; margin-bottom: 4px; }
         
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: transparent;
-        }
-        
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
         input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 14px;
-            width: 14px;
-            border-radius: 50%;
-            background: #4ade80;
-            cursor: pointer;
-            margin-top: -5px; 
+            -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%;
+            background: #4ade80; cursor: pointer; margin-top: -5px; 
             box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
         }
-        
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            cursor: pointer;
-            background: #333;
-            border-radius: 2px;
-        }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #333; border-radius: 2px; }
 
-        .btn {
-            transition: all 0.2s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-size: 0.75rem;
-            font-weight: bold;
-        }
+        .btn { transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px; font-size: 0.75rem; font-weight: bold; }
         .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(74, 222, 128, 0.3); }
         .btn:active { transform: translateY(0); }
 
         .scanline {
-            width: 100%;
-            height: 100px;
-            z-index: 10;
+            width: 100%; height: 100px; z-index: 2;
             background: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(255, 255, 255, 0.03) 50%, rgba(0,0,0,0) 100%);
-            opacity: 0.1;
-            position: absolute;
-            bottom: 100%;
-            animation: scanline 10s linear infinite;
-            pointer-events: none;
+            opacity: 0.1; position: absolute; bottom: 100%;
+            animation: scanline 10s linear infinite; pointer-events: none;
         }
-
-        @keyframes scanline {
-            0% { bottom: 100%; }
-            100% { bottom: -100px; }
-        }
+        @keyframes scanline { 0% { bottom: 100%; } 100% { bottom: -100px; } }
         
-        /* Custom scrollbar for panel */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
         ::-webkit-scrollbar-thumb { background: rgba(74, 222, 128, 0.3); border-radius: 3px; }
 
-        /* Audio Init Overlay */
         #audio-overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            backdrop-filter: blur(5px);
-            transition: opacity 0.5s;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: flex;
+            justify-content: center; align-items: center; z-index: 100;
+            backdrop-filter: blur(8px); transition: opacity 0.5s;
         }
     </style>
 </head>
 <body>
 
-    <!-- Audio Init Overlay -->
     <div id="audio-overlay">
-        <button id="start-audio-btn" class="glass-panel px-8 py-4 text-green-400 font-mono text-xl border border-green-500 hover:bg-green-900 transition-colors">
-            INITIALIZE AUDIO SYSTEM
+        <button id="start-app-btn" class="glass-panel px-8 py-4 text-green-400 font-mono text-xl border border-green-500 hover:bg-green-900 transition-colors">
+            ENTER THE LABORATORY
         </button>
     </div>
 
-    <!-- 3D Canvas -->
     <div id="canvas-container"></div>
     <div class="scanline"></div>
 
-    <!-- UI Overlay -->
     <div class="absolute top-0 left-0 w-full h-full pointer-events-none p-6 flex flex-col md:flex-row justify-between z-20">
         
-        <!-- Controls Panel -->
+        <!-- Controls -->
         <div class="glass-panel w-full md:w-80 p-6 pointer-events-auto flex flex-col gap-4 h-fit max-h-[90vh] overflow-y-auto">
             <h1 class="text-xl font-bold text-green-400 border-b border-gray-700 pb-2 mb-2">Morphic Field Engine</h1>
             
-            <!-- Base Forms -->
             <div class="mb-2">
-                <h2 class="text-xs text-gray-400 font-bold mb-2 uppercase">Sacred Geometry</h2>
+                <h2 class="text-xs text-gray-400 font-bold mb-2 uppercase">The 5 Elements</h2>
                 <div class="grid grid-cols-3 gap-2 mb-2">
-                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('merkaba')">Merkaba</button>
-                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('ether')">Ether</button>
-                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('crystal')">Crystal</button>
+                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" data-shape="monolith">Earth</button>
+                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" data-shape="icosahedron">Water</button>
+                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" data-shape="merkaba">Fire</button>
                 </div>
                 <div class="grid grid-cols-2 gap-2 mb-4">
-                     <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('lotus')">Lotus (Seed)</button>
-                     <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('spiral')">Vortex Spiral</button>
+                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" data-shape="octahedron">Air</button>
+                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" data-shape="dodecahedron">Ether</button>
                 </div>
                 
-                <h2 class="text-xs text-gray-400 font-bold mb-2 uppercase">Organic Forms</h2>
-                <div class="grid grid-cols-3 gap-2 mb-4">
-                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('sphere')">Cell</button>
-                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('torus')">Spirit</button>
-                    <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" onclick="changeBase('capsule')">Larva</button>
+                <h2 class="text-xs text-gray-400 font-bold mb-2 uppercase">The 4 Sacred Patterns</h2>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                     <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" data-shape="seed">The Seed (7)</button>
+                     <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" data-shape="torus">The Torus</button>
+                     <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" data-shape="spiral">Golden Spiral</button>
+                     <button class="btn bg-gray-800 hover:bg-gray-700 py-2 rounded border border-gray-600" data-shape="flower">Flower of Life</button>
                 </div>
             </div>
 
-            <!-- Sliders -->
-            <div class="space-y-4">
-                <div class="slider-container">
-                    <div class="slider-label"><span>Resonance (Amplitude)</span><span id="val-amplitude">0.5</span></div>
-                    <input type="range" id="amplitude" min="0" max="2.0" step="0.01" value="0.5">
+            <div id="sliders-wrapper" class="space-y-4"></div>
+            
+            <div class="border-t border-gray-700 mt-2 pt-2">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-gray-400 uppercase">Audio System</span>
+                    <button id="audio-toggle" class="px-2 py-1 bg-gray-800 text-xs rounded border border-gray-600 text-gray-500 font-bold transition-all" disabled>OFF</button>
                 </div>
-
                 <div class="slider-container">
-                    <div class="slider-label"><span>Complexity (Frequency)</span><span id="val-frequency">1.0</span></div>
-                    <input type="range" id="frequency" min="0.1" max="5.0" step="0.1" value="1.0">
-                </div>
-
-                <div class="slider-container">
-                    <div class="slider-label"><span>Harmonics (Symmetry)</span><span id="val-symmetry">1</span></div>
-                    <input type="range" id="symmetry" min="1" max="12" step="1" value="1">
-                </div>
-
-                <div class="slider-container">
-                    <div class="slider-label"><span>Flux Speed</span><span id="val-speed">0.2</span></div>
-                    <input type="range" id="speed" min="0" max="2.0" step="0.1" value="0.2">
-                </div>
-
-                <div class="slider-container">
-                    <div class="slider-label"><span>Spike Factor</span><span id="val-sharpness">0.0</span></div>
-                    <input type="range" id="sharpness" min="0" max="1.0" step="0.01" value="0.0">
-                </div>
-                
-                <div class="slider-container">
-                    <div class="slider-label"><span>Field Twist</span><span id="val-twist">0.0</span></div>
-                    <input type="range" id="twist" min="0" max="5.0" step="0.1" value="0.0">
-                </div>
-
-                <div class="slider-container">
-                    <div class="slider-label"><span>Ethereal Glow</span><span id="val-glow">0.5</span></div>
-                    <input type="range" id="glow" min="0" max="1.0" step="0.01" value="0.5">
-                </div>
-                
-                <div class="border-t border-gray-700 mt-2 pt-2">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-gray-400 uppercase">Audio System</span>
-                        <button id="audio-toggle" class="px-2 py-1 bg-gray-800 text-xs rounded border border-gray-600 text-gray-500 font-bold transition-all" disabled>OFF</button>
-                    </div>
-                    <div class="slider-container">
-                        <div class="slider-label"><span>Master Volume</span><span id="val-volume">0.3</span></div>
-                        <input type="range" id="volume" min="0" max="1.0" step="0.01" value="0.3">
-                    </div>
+                    <div class="slider-label"><span>Master Volume</span><span id="val-volume">0.3</span></div>
+                    <input type="range" id="volume" min="0" max="1.0" step="0.01" value="0.3">
                 </div>
             </div>
 
-            <div class="mt-4 pt-4 border-t border-gray-700">
-                <button onclick="mutate()" class="btn w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded shadow-lg shadow-green-900/50">
-                    Mutate New Generation
-                </button>
-            </div>
-             <div class="text-xs text-gray-500 mt-2 text-center">
-                Use mouse to rotate and zoom.
+            <div class="mt-4 pt-4 border-t border-gray-700 space-y-2">
+                <button id="mutate-btn" class="btn w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded shadow-lg shadow-green-900/50">Mutate</button>
+                <button id="reset-btn" class="btn w-full bg-blue-900 hover:bg-blue-800 text-blue-200 py-2 rounded border border-blue-700">Rebirth</button>
             </div>
         </div>
 
-        <!-- Info / Readout -->
+        <!-- Info -->
         <div class="hidden md:flex flex-col justify-end items-end pointer-events-none">
             <div class="glass-panel p-4 text-right">
                 <div class="text-xs text-green-400 font-mono mb-1">FIELD STATUS</div>
-                <div class="text-2xl font-bold font-mono" id="field-readout">SILENT</div>
+                <div class="text-2xl font-bold font-mono" id="field-readout">STANDBY</div>
                 <div class="text-xs text-gray-400 mt-2 font-mono">
-                    Geometry: <span id="geo-type">Cell</span><br>
+                    Geometry: <span id="geo-type">None</span><br>
                     Sound Mode: <span id="sound-mode">Standard</span><br>
-                    Vertices: <span id="vertex-count">0</span>
+                    Evolution Age: <span id="evo-age">0.0</span><br>
+                    Protomatter: <span id="proto-count">300</span>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // --- 1. Sound Engine (Web Audio API) ---
-        class SoundEngine {
+        // --- 1. SHADER LIBRARY ---
+        const ShaderLibrary = {
+            noiseFunctions: `
+                vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+                vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+                float snoise(vec3 v) {
+                    const vec2  C = vec2(1.0/6.0, 1.0/3.0);
+                    const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+                    vec3 i  = floor(v + dot(v, C.yyy));
+                    vec3 x0 = v - i + dot(i, C.xxx);
+                    vec3 g = step(x0.yzx, x0.xyz);
+                    vec3 l = 1.0 - g;
+                    vec3 i1 = min( g.xyz, l.zxy );
+                    vec3 i2 = max( g.xyz, l.zxy );
+                    vec3 x1 = x0 - i1 + C.xxx;
+                    vec3 x2 = x0 - i2 + C.yyy;
+                    vec3 x3 = x0 - D.yyy;
+                    i = mod289(i); 
+                    vec4 p = permute( permute( permute( 
+                                i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+                            + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
+                            + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+                    float n_ = 0.142857142857;
+                    vec3  ns = n_ * D.wyz - D.xzx;
+                    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+                    vec4 x_ = floor(j * ns.z);
+                    vec4 y_ = floor(j - 7.0 * x_ );
+                    vec4 x = x_ *ns.x + ns.yyyy;
+                    vec4 y = y_ *ns.x + ns.yyyy;
+                    vec4 h = 1.0 - abs(x) - abs(y);
+                    vec4 b0 = vec4( x.xy, y.xy );
+                    vec4 b1 = vec4( x.zw, y.zw );
+                    vec4 s0 = floor(b0)*2.0 + 1.0;
+                    vec4 s1 = floor(b1)*2.0 + 1.0;
+                    vec4 sh = -step(h, vec4(0.0));
+                    vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+                    vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+                    vec3 p0 = vec3(a0.xy,h.x);
+                    vec3 p1 = vec3(a0.zw,h.y);
+                    vec3 p2 = vec3(a1.xy,h.z);
+                    vec3 p3 = vec3(a1.zw,h.w);
+                    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+                    p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+                    vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                    m = m * m;
+                    return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+                }
+            `,
+            vertex: `
+                uniform float time;
+                uniform float amplitude;
+                uniform float frequency;
+                uniform float symmetry;
+                uniform float sharpness;
+                uniform float twist;
+                uniform float evolution;
+                varying vec2 vUv;
+                varying float vDisplacement;
+                varying vec3 vNormal;
+                varying vec3 vPosition;
+                varying float vWarp; 
+
+                void main() {
+                    vUv = uv;
+                    vNormal = normal;
+                    vec3 pos = position;
+                    
+                    float angle = pos.y * twist;
+                    float s = sin(angle);
+                    float c = cos(angle);
+                    mat2 rot = mat2(c, -s, s, c);
+                    pos.xz = rot * pos.xz;
+
+                    float rad = length(pos.xz);
+                    float theta = atan(pos.z, pos.x);
+                    if (symmetry > 1.0) {
+                        float sector = 6.28318 / floor(symmetry);
+                        theta = mod(theta, sector);
+                        theta = abs(theta - sector/2.0); 
+                    }
+                    vec3 symmetryPos = vec3(rad * cos(theta), pos.y, rad * sin(theta));
+
+                    vec3 warpInput = symmetryPos * frequency;
+                    float evoFactor = 1.0 + (evolution * 0.5);
+                    float deepTime = time * 0.1 * (1.0 / evoFactor); 
+                    
+                    vec3 warpVec;
+                    warpVec.x = snoise(warpInput + vec3(deepTime, 0.0, 0.0)); 
+                    warpVec.y = snoise(warpInput + vec3(0.0, deepTime, 0.0) + vec3(10.0));
+                    warpVec.z = snoise(warpInput + vec3(0.0, 0.0, deepTime) + vec3(20.0));
+                    
+                    vWarp = length(warpVec) * evoFactor;
+                    vec3 warpedPos = symmetryPos + warpVec * (amplitude * 0.5 * evoFactor); 
+                    float noiseVal = snoise(warpedPos * frequency + time);
+                    
+                    if (sharpness > 0.0) {
+                        noiseVal = max(0.0, noiseVal);
+                        noiseVal = pow(noiseVal, 1.0 - sharpness * 0.5); 
+                    }
+
+                    vDisplacement = noiseVal;
+                    vec3 newPosition = pos + normal * (noiseVal * amplitude);
+                    vPosition = newPosition;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+                }
+            `,
+            fragment: `
+                uniform float time;
+                uniform float glowIntensity;
+                uniform float evolution;
+                varying float vDisplacement;
+                varying vec3 vNormal;
+                varying vec3 vPosition;
+                varying float vWarp; 
+
+                void main() {
+                    vec3 voidColor = vec3(0.05, 0.1, 0.2);
+                    vec3 matterColor = vec3(0.2, 0.8, 0.6);
+                    vec3 energyColor = vec3(1.0, 0.2, 0.5);
+                    vec3 ancientColor = vec3(1.0, 0.8, 0.2);
+
+                    float heightFactor = smoothstep(-0.2, 0.6, vDisplacement);
+                    vec3 base = mix(voidColor, matterColor, heightFactor);
+
+                    float stressFactor = smoothstep(0.2, 1.2, vWarp);
+                    vec3 color = mix(base, energyColor, stressFactor * 0.7);
+
+                    float ancientFactor = smoothstep(0.0, 10.0, evolution);
+                    color = mix(color, ancientColor, ancientFactor * 0.4 * stressFactor);
+
+                    vec3 viewDir = normalize(cameraPosition - vPosition);
+                    float fresnel = pow(1.0 - dot(viewDir, vNormal), 2.5);
+                    float pulse = 0.5 + 0.5 * sin(time * 2.0);
+
+                    color += vec3(0.5, 0.8, 1.0) * fresnel * glowIntensity;
+                    color += energyColor * fresnel * pulse * 0.3 * stressFactor; 
+                    gl_FragColor = vec4(color, 0.9);
+                }
+            `
+        };
+
+        // --- 2. SOUND SYSTEM (SOOTHING FIX) ---
+        class SoundSystem {
             constructor() {
                 this.ctx = null;
                 this.masterGain = null;
@@ -220,98 +281,388 @@
                 this.filter = null;
                 this.lfo = null;
                 this.lfoGain = null;
-                this.isPlaying = false;
-                
-                // Default Profile
-                this.profile = {
-                    carrierType: 'sine',
-                    modulatorType: 'triangle',
-                    baseFreqMultiplier: 1.0,
-                    modFreqMultiplier: 1.0,
-                    name: 'Standard'
-                };
+                // Defaults to low pitch sine waves for soothing effect
+                this.profile = { carrierType: 'sine', modulatorType: 'sine', baseFreqMultiplier: 0.5, modFreqMultiplier: 1.0, name: 'Standard' };
             }
 
             init() {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 this.ctx = new AudioContext();
+                this.ctx.suspend(); // Start suspended (OFF by default)
                 
-                // Master Gain
                 this.masterGain = this.ctx.createGain();
                 this.masterGain.gain.value = 0.3;
                 this.masterGain.connect(this.ctx.destination);
-
-                // --- FM Synthesis Chain ---
                 
-                // Carrier (The main audible tone)
                 this.carrier = this.ctx.createOscillator();
-                this.carrier.type = this.profile.carrierType;
-                this.carrier.frequency.value = 220; 
-
-                // Modulator (modifies the carrier to create timbre)
                 this.modulator = this.ctx.createOscillator();
-                this.modulator.type = this.profile.modulatorType;
-                this.modulator.frequency.value = 220;
-
-                // Modulator Gain (Controls "Resonance")
                 this.modulatorGain = this.ctx.createGain();
-                this.modulatorGain.gain.value = 0; 
-
-                // Filter (Controls "Sharpness")
                 this.filter = this.ctx.createBiquadFilter();
-                this.filter.type = 'lowpass';
-                this.filter.frequency.value = 1000;
-                this.filter.Q.value = 1;
-
-                // LFO (Controls "Flux" volume pulsing)
                 this.lfo = this.ctx.createOscillator();
-                this.lfo.type = 'sine';
-                this.lfo.frequency.value = 0.2; 
-
                 this.lfoGain = this.ctx.createGain();
-                this.lfoGain.gain.value = 0.1; 
 
-                // Connections
+                // Setup graph: Mod -> ModGain -> CarrierFreq. Carrier -> Filter -> Master. LFO -> FilterFreq
+                this.carrier.type = 'sine';
+                this.modulator.type = 'sine';
+                this.modulatorGain.gain.value = 0;
+                
+                this.filter.type = 'lowpass';
+                this.filter.Q.value = 1;
+                
+                this.lfo.type = 'sine';
+                this.lfo.frequency.value = 0.2;
+
                 this.modulator.connect(this.modulatorGain);
                 this.modulatorGain.connect(this.carrier.frequency);
-
                 this.carrier.connect(this.filter);
                 this.filter.connect(this.masterGain);
-
-                // LFO modulates filter
                 this.lfo.connect(this.lfoGain);
                 this.lfoGain.connect(this.filter.frequency);
 
-                // Start
                 this.carrier.start();
                 this.modulator.start();
                 this.lfo.start();
-
-                this.isPlaying = true;
-                
-                this.updateFromUI();
-                this.updateToggleUI(true);
             }
 
-            // New method to toggle suspend/resume
-            toggleAudio() {
-                if (!this.ctx) return;
+            toggle() {
+                if(!this.ctx) return false;
+                if(this.ctx.state === 'running') { this.ctx.suspend(); return false; }
+                if(this.ctx.state === 'suspended') { this.ctx.resume(); return true; }
+                return false;
+            }
 
-                if (this.ctx.state === 'running') {
-                    this.ctx.suspend().then(() => {
-                        this.updateToggleUI(false);
-                    });
-                } else if (this.ctx.state === 'suspended') {
-                    this.ctx.resume().then(() => {
-                        this.updateToggleUI(true);
-                        this.updateFromUI(); // Refresh params just in case
-                    });
+            setProfile(type) {
+                // Lowered multipliers to prevent "dial tone" screeching
+                switch(type) {
+                    case 'merkaba': this.profile = { carrierType: 'triangle', modulatorType: 'sine', baseFreqMultiplier: 0.4, modFreqMultiplier: 1.5, name: 'Fire / Resonance' }; break;
+                    case 'dodecahedron': this.profile = { carrierType: 'sine', modulatorType: 'sine', baseFreqMultiplier: 0.3, modFreqMultiplier: 0.5, name: 'Ether / Deep' }; break;
+                    case 'octahedron': this.profile = { carrierType: 'triangle', modulatorType: 'sine', baseFreqMultiplier: 0.6, modFreqMultiplier: 1.0, name: 'Air / Focus' }; break;
+                    case 'icosahedron': this.profile = { carrierType: 'sine', modulatorType: 'sine', baseFreqMultiplier: 0.4, modFreqMultiplier: 1.0, name: 'Water / Flow' }; break;
+                    case 'monolith': this.profile = { carrierType: 'square', modulatorType: 'sine', baseFreqMultiplier: 0.15, modFreqMultiplier: 0.25, name: 'Earth / Sub' }; break;
+                    
+                    case 'flower': this.profile = { carrierType: 'sine', modulatorType: 'triangle', baseFreqMultiplier: 0.5, modFreqMultiplier: 1.618, name: 'Flower / Expansion' }; break;
+                    case 'spiral': this.profile = { carrierType: 'triangle', modulatorType: 'sine', baseFreqMultiplier: 0.4, modFreqMultiplier: 1.1, name: 'Phi / Ascension' }; break;
+                    case 'torus': this.profile = { carrierType: 'triangle', modulatorType: 'sine', baseFreqMultiplier: 0.4, modFreqMultiplier: 1.5, name: 'Magnetic Field' }; break;
+                    case 'seed': this.profile = { carrierType: 'sine', modulatorType: 'triangle', baseFreqMultiplier: 0.5, modFreqMultiplier: 2.0, name: 'Seed / Genesis' }; break;
+                    
+                    default: this.profile = { carrierType: 'sine', modulatorType: 'sine', baseFreqMultiplier: 0.4, modFreqMultiplier: 1.0, name: 'Standard' }; break;
                 }
+                if(this.ctx && this.carrier) {
+                    this.carrier.type = this.profile.carrierType;
+                    this.modulator.type = this.profile.modulatorType;
+                }
+                return this.profile.name;
             }
 
-            updateToggleUI(isRunning) {
+            update(params) {
+                if(!this.ctx || this.ctx.state !== 'running') return;
+                const now = this.ctx.currentTime;
+                // Base 100Hz + param -> Multiplier. Kept low for soothing effect.
+                const targetFreq = (80 + (params.frequency * 50)) * this.profile.baseFreqMultiplier;
+                this.carrier.frequency.setTargetAtTime(targetFreq, now, 0.2);
+                
+                const modFreq = targetFreq * (params.symmetry > 0 ? params.symmetry : 0.5) * this.profile.modFreqMultiplier;
+                this.modulator.frequency.setTargetAtTime(modFreq, now, 0.2);
+                
+                // Modulator Gain (Timbre)
+                this.modulatorGain.gain.setTargetAtTime(params.amplitude * 300, now, 0.2);
+                
+                // LFO (Breath speed)
+                this.lfo.frequency.setTargetAtTime(params.speed, now, 0.2);
+                this.lfoGain.gain.setTargetAtTime(300, now, 0.2);
+                
+                // Filter Cutoff
+                this.filter.frequency.setTargetAtTime(100 + (params.sharpness * 3000), now, 0.2);
+                
+                this.masterGain.gain.setTargetAtTime(params.volume * 0.5, now, 0.1);
+            }
+        }
+
+        // --- 3. BEING MANAGER ---
+        class BeingManager {
+            constructor(scene, uniforms) {
+                this.scene = scene;
+                this.uniforms = uniforms;
+                this.currentMesh = null;
+                this.protomatter = null;
+                this.material = new THREE.ShaderMaterial({
+                    uniforms: this.uniforms,
+                    vertexShader: ShaderLibrary.noiseFunctions + ShaderLibrary.vertex,
+                    fragmentShader: ShaderLibrary.fragment,
+                    wireframe: false,
+                    transparent: true,
+                    side: THREE.DoubleSide
+                });
+                this.initProtomatter();
+            }
+
+            initProtomatter() {
+                const count = 300;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(count * 3);
+                this.velocities = [];
+                for(let i=0; i<count; i++) {
+                    this.velocities.push({ radiusBase: 2.5 + Math.random() * 2 });
+                }
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const mat = new THREE.PointsMaterial({ color: 0x4ade80, size: 0.05, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending });
+                this.protomatter = new THREE.Points(geometry, mat);
+                this.resetProtomatter();
+                this.scene.add(this.protomatter);
+            }
+
+            resetProtomatter() {
+                const pos = this.protomatter.geometry.attributes.position.array;
+                for(let i=0; i<300; i++) {
+                    const r = 5 + Math.random() * 5;
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.random() * Math.PI;
+                    pos[i*3] = r * Math.sin(phi) * Math.cos(theta);
+                    pos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+                    pos[i*3+2] = r * Math.cos(phi);
+                }
+                this.protomatter.geometry.attributes.position.needsUpdate = true;
+            }
+
+            updateProtomatter(time, amplitude) {
+                const pos = this.protomatter.geometry.attributes.position.array;
+                const swarmIntensity = amplitude;
+                for(let i=0; i<300; i++) {
+                    let ix=i*3, iy=i*3+1, iz=i*3+2;
+                    let x=pos[ix], y=pos[iy], z=pos[iz];
+                    
+                    const speed = 0.01 + (swarmIntensity * 0.05);
+                    const cosS = Math.cos(speed);
+                    const sinS = Math.sin(speed);
+                    let nx = x * cosS - z * sinS;
+                    let nz = x * sinS + z * cosS;
+                    
+                    const targetR = this.velocities[i].radiusBase - (swarmIntensity * 0.5);
+                    const currentR = Math.sqrt(nx*nx + y*y + nz*nz);
+                    const pull = (targetR - currentR) * 0.05;
+                    const factor = 1 + (pull / (currentR || 1));
+                    pos[ix] = nx * factor; pos[iy] = y * factor; pos[iz] = nz * factor;
+                }
+                this.protomatter.geometry.attributes.position.needsUpdate = true;
+                this.protomatter.material.opacity = 0.3 + (swarmIntensity * 0.5);
+            }
+
+            addWireframe(mesh, geo) {
+                // Safety check: ensure geometry exists before creating wireframe
+                if (!geo) return;
+                const w = new THREE.LineSegments(new THREE.WireframeGeometry(geo), new THREE.LineBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.05}));
+                mesh.add(w);
+            }
+
+            create(type) {
+                if (this.currentMesh) this.scene.remove(this.currentMesh);
+                this.currentMesh = null;
+                
+                let geometry = null;
+                let mesh = null;
+                
+                // Helper to create simple mesh
+                const createBase = (geo) => {
+                    geometry = geo;
+                    mesh = new THREE.Mesh(geometry, this.material);
+                    this.addWireframe(mesh, geometry);
+                    this.currentMesh = mesh;
+                };
+
+                if (type === 'merkaba') {
+                    this.currentMesh = new THREE.Group();
+                    const g = new THREE.TetrahedronGeometry(1.5, 0);
+                    const m1 = new THREE.Mesh(g, this.material);
+                    const m2 = new THREE.Mesh(g, this.material);
+                    m2.rotateX(Math.PI/2); m2.rotateZ(Math.PI);
+                    this.addWireframe(m1, g); this.addWireframe(m2, g);
+                    this.currentMesh.add(m1); this.currentMesh.add(m2);
+                } 
+                else if (type === 'monolith') createBase(new THREE.BoxGeometry(1.5, 1.5, 1.5, 20, 20, 20));
+                else if (type === 'icosahedron') createBase(new THREE.IcosahedronGeometry(1.5, 40));
+                else if (type === 'octahedron') createBase(new THREE.OctahedronGeometry(1.5, 0));
+                else if (type === 'dodecahedron') createBase(new THREE.DodecahedronGeometry(1.5, 0));
+                else if (type === 'torus') createBase(new THREE.TorusGeometry(1.2, 0.5, 30, 60));
+                
+                else if (type === 'seed') { 
+                    this.currentMesh = new THREE.Group();
+                    const geo = new THREE.SphereGeometry(0.6, 32, 32);
+                    const addS = (x, y, z) => {
+                        const m = new THREE.Mesh(geo, this.material);
+                        m.position.set(x,y,z);
+                        this.addWireframe(m, geo);
+                        this.currentMesh.add(m);
+                    };
+                    addS(0,0,0);
+                    for(let i=0; i<6; i++) {
+                        const a = (i/6)*Math.PI*2;
+                        addS(Math.cos(a)*0.6, Math.sin(a)*0.6, 0);
+                    }
+                } 
+                else if (type === 'flower') {
+                    this.currentMesh = new THREE.Group();
+                    const geo = new THREE.SphereGeometry(0.4, 32, 32);
+                    const dist = 0.4;
+                    const addS = (x, y, z) => {
+                        const m = new THREE.Mesh(geo, this.material);
+                        m.position.set(x,y,z);
+                        this.addWireframe(m, geo);
+                        this.currentMesh.add(m);
+                    };
+                    addS(0,0,0);
+                    for(let i=0; i<6; i++) {
+                        const a = (i/6)*Math.PI*2;
+                        addS(Math.cos(a)*dist, Math.sin(a)*dist, 0);
+                    }
+                    for(let i=0; i<6; i++) {
+                        const a = (i/6)*Math.PI*2;
+                        addS(Math.cos(a)*dist*2, Math.sin(a)*dist*2, 0);
+                    }
+                    for(let i=0; i<6; i++) {
+                        const a = ((i+0.5)/6)*Math.PI*2;
+                        const r = dist * Math.sqrt(3);
+                        addS(Math.cos(a)*r, Math.sin(a)*r, 0);
+                    }
+                }
+                else if (type === 'spiral') {
+                    class GoldenSpiralCurve extends THREE.Curve {
+                        getPoint(t) { 
+                            const theta = t * Math.PI * 6; 
+                            const radius = 0.1 * Math.exp(0.15 * theta);
+                            return new THREE.Vector3(radius * Math.cos(theta), (t - 0.5) * 4, radius * Math.sin(theta)); 
+                        }
+                    }
+                    createBase(new THREE.TubeGeometry(new GoldenSpiralCurve(), 128, 0.2, 16, false));
+                }
+
+                if (this.currentMesh) this.scene.add(this.currentMesh);
+            }
+        }
+
+        // --- 4. APP CONTROLLER ---
+        class MorphicApp {
+            constructor() {
+                this.params = { amplitude: 0.5, frequency: 1.0, symmetry: 1.0, speed: 0.2, sharpness: 0.0, twist: 0.0, glow: 0.5, volume: 0.3 };
+                this.uniforms = {
+                    time: { value: 0.0 }, amplitude: { value: 0.5 }, frequency: { value: 1.0 },
+                    symmetry: { value: 1.0 }, sharpness: { value: 0.0 }, twist: { value: 0.0 },
+                    glowIntensity: { value: 0.5 }, evolution: { value: 0.0 }
+                };
+                
+                this.initVisuals();
+                this.audio = new SoundSystem();
+                this.being = new BeingManager(this.scene, this.uniforms);
+                this.initUI();
+                
+                this.being.create('lotus');
+                this.audio.setProfile('lotus');
+                
+                this.animate = this.animate.bind(this);
+                this.animate();
+            }
+
+            initVisuals() {
+                this.scene = new THREE.Scene();
+                this.scene.fog = new THREE.FogExp2(0x050505, 0.02);
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+                this.camera.position.z = 4;
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                document.getElementById('canvas-container').appendChild(this.renderer.domElement);
+                
+                this.scene.add(new THREE.AmbientLight(0x404040, 2));
+                const p1 = new THREE.PointLight(0x4ade80, 1, 10); p1.position.set(2,2,2); this.scene.add(p1);
+                const p2 = new THREE.PointLight(0x60a5fa, 1, 10); p2.position.set(-2,-2,2); this.scene.add(p2);
+                const d1 = new THREE.DirectionalLight(0xffffff, 0.5); d1.position.set(0,5,-5); this.scene.add(d1);
+
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+                
+                this.isDragging = false;
+                this.lastMouse = {x:0, y:0};
+                document.addEventListener('mousedown', () => this.isDragging = true);
+                document.addEventListener('mouseup', () => this.isDragging = false);
+                document.addEventListener('mousemove', (e) => {
+                    if(this.isDragging && this.being.currentMesh) {
+                        this.being.currentMesh.rotation.y += (e.offsetX - this.lastMouse.x) * 0.005;
+                        this.being.currentMesh.rotation.x += (e.offsetY - this.lastMouse.y) * 0.005;
+                    }
+                    this.lastMouse = {x:e.offsetX, y:e.offsetY};
+                });
+                document.addEventListener('wheel', (e) => {
+                    this.camera.position.z = Math.max(2, Math.min(15, this.camera.position.z + e.deltaY * 0.005));
+                });
+            }
+
+            initUI() {
+                const params = [
+                    {id: 'amplitude', name: 'Resonance', min: 0, max: 2, step: 0.01},
+                    {id: 'frequency', name: 'Complexity', min: 0.1, max: 5, step: 0.1},
+                    {id: 'symmetry', name: 'Harmonics', min: 1, max: 12, step: 1},
+                    {id: 'speed', name: 'Flux', min: 0, max: 2, step: 0.1},
+                    {id: 'sharpness', name: 'Spike', min: 0, max: 1, step: 0.01},
+                    {id: 'twist', name: 'Twist', min: 0, max: 5, step: 0.1},
+                    {id: 'glow', name: 'Glow', min: 0, max: 1, step: 0.01}
+                ];
+
+                const container = document.getElementById('sliders-wrapper');
+                params.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'slider-container';
+                    div.innerHTML = `<div class="slider-label"><span>${p.name}</span><span id="val-${p.id}">${this.params[p.id]}</span></div><input type="range" id="${p.id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${this.params[p.id]}">`;
+                    container.appendChild(div);
+                    document.getElementById(p.id).addEventListener('input', (e) => {
+                        const val = parseFloat(e.target.value);
+                        this.params[p.id] = val;
+                        document.getElementById(`val-${p.id}`).innerText = val;
+                        this.updateUniforms();
+                        this.audio.update(this.params);
+                    });
+                });
+
+                document.getElementById('volume').addEventListener('input', (e) => {
+                    this.params.volume = parseFloat(e.target.value);
+                    document.getElementById('val-volume').innerText = this.params.volume;
+                    this.audio.update(this.params);
+                });
+
+                document.querySelectorAll('button[data-shape]').forEach(b => {
+                    b.addEventListener('click', (e) => {
+                        const type = e.target.dataset.shape;
+                        this.being.create(type);
+                        const soundName = this.audio.setProfile(type);
+                        document.getElementById('geo-type').innerText = type.charAt(0).toUpperCase() + type.slice(1);
+                        document.getElementById('sound-mode').innerText = soundName;
+                    });
+                });
+
+                document.getElementById('start-app-btn').addEventListener('click', () => {
+                    this.audio.init();
+                    document.getElementById('audio-overlay').style.opacity = '0';
+                    setTimeout(() => document.getElementById('audio-overlay').style.display = 'none', 500);
+                    // Do NOT toggle audio button to ON automatically. User must choose to enable sound.
+                });
+
+                document.getElementById('audio-toggle').addEventListener('click', () => {
+                    const running = this.audio.toggle();
+                    this.toggleAudioBtn(running);
+                });
+
+                document.getElementById('mutate-btn').addEventListener('click', () => this.mutate());
+                document.getElementById('reset-btn').addEventListener('click', () => {
+                    this.uniforms.evolution.value = 0;
+                    this.being.resetProtomatter();
+                });
+            }
+
+            toggleAudioBtn(isOn) {
                 const btn = document.getElementById('audio-toggle');
-                if (isRunning) {
+                btn.disabled = false;
+                if(isOn) {
                     btn.innerText = "ON";
                     btn.className = "px-2 py-1 bg-green-500 text-black text-xs rounded border border-green-400 font-bold transition-all shadow-[0_0_10px_rgba(74,222,128,0.5)]";
                     document.getElementById('field-readout').innerText = "RESONATING";
@@ -320,612 +671,45 @@
                     btn.className = "px-2 py-1 bg-red-900 text-red-200 text-xs rounded border border-red-700 font-bold transition-all";
                     document.getElementById('field-readout').innerText = "MUTED";
                 }
-                btn.disabled = false;
             }
 
-            setShapeProfile(shapeType) {
-                // Define sound characteristics based on geometry
-                switch(shapeType) {
-                    case 'merkaba':
-                        this.profile = { 
-                            carrierType: 'triangle', // Changed from Sawtooth to Triangle for "Chime" quality
-                            modulatorType: 'sine',   // Sine modulation creates pure bell tones
-                            baseFreqMultiplier: 0.8, // Lower pitch for "Primordial" weight
-                            modFreqMultiplier: 1.5,  // Perfect Fifth ratio for sacred resonance
-                            name: 'Primordial Chime'
-                        };
-                        break;
-                    case 'ether':
-                        this.profile = { 
-                            carrierType: 'sine', 
-                            modulatorType: 'sine', 
-                            baseFreqMultiplier: 0.5, // Deep bass
-                            modFreqMultiplier: 0.5,
-                            name: 'Deep/Cosmic'
-                        };
-                        break;
-                    case 'crystal':
-                        this.profile = { 
-                            carrierType: 'triangle', 
-                            modulatorType: 'sine', 
-                            baseFreqMultiplier: 2.0, // Very high
-                            modFreqMultiplier: 1.0,
-                            name: 'Glassy/Pure'
-                        };
-                        break;
-                    case 'lotus':
-                        this.profile = { 
-                            carrierType: 'sine', 
-                            modulatorType: 'triangle', 
-                            baseFreqMultiplier: 1.0,
-                            modFreqMultiplier: 1.618, // Golden Ratio approx
-                            name: 'Harmonic'
-                        };
-                        break;
-                    case 'spiral':
-                        this.profile = { 
-                            carrierType: 'sawtooth', 
-                            modulatorType: 'sawtooth', 
-                            baseFreqMultiplier: 0.8,
-                            modFreqMultiplier: 1.1, // Dissonant/Twisting
-                            name: 'Aggressive'
-                        };
-                        break;
-                    case 'torus':
-                        this.profile = { 
-                            carrierType: 'triangle', 
-                            modulatorType: 'sawtooth', 
-                            baseFreqMultiplier: 0.8,
-                            modFreqMultiplier: 1.5,
-                            name: 'Magnetic'
-                        };
-                        break;
-                    case 'capsule':
-                        this.profile = { 
-                            carrierType: 'square', 
-                            modulatorType: 'triangle', 
-                            baseFreqMultiplier: 0.6,
-                            modFreqMultiplier: 0.5,
-                            name: 'Hollow'
-                        };
-                        break;
-                    case 'sphere':
-                    default:
-                        this.profile = { 
-                            carrierType: 'sine', 
-                            modulatorType: 'sine', 
-                            baseFreqMultiplier: 1.0,
-                            modFreqMultiplier: 1.0,
-                            name: 'Organic'
-                        };
-                        break;
-                }
-
-                if (this.isPlaying && this.ctx && this.ctx.state === 'running') {
-                    // Update types dynamically
-                    this.carrier.type = this.profile.carrierType;
-                    this.modulator.type = this.profile.modulatorType;
-                    
-                    // Force a UI update to apply new multipliers
-                    this.updateFromUI(); 
-                    
-                    // Update Readout
-                    document.getElementById('sound-mode').innerText = this.profile.name;
-                }
+            updateUniforms() {
+                this.uniforms.amplitude.value = this.params.amplitude;
+                this.uniforms.frequency.value = this.params.frequency;
+                this.uniforms.symmetry.value = this.params.symmetry;
+                this.uniforms.sharpness.value = this.params.sharpness;
+                this.uniforms.twist.value = this.params.twist;
+                this.uniforms.glowIntensity.value = this.params.glow;
             }
 
-            updateFromUI() {
-                if (!this.isPlaying || !this.ctx || this.ctx.state !== 'running') return;
+            mutate() {
+                const r = (min, max) => Math.random() * (max - min) + min;
+                const map = { amplitude: [0.2,1.5], frequency: [0.5,4], symmetry: [1,9], twist: [0,3] };
+                Object.keys(map).forEach(k => {
+                    const val = r(map[k][0], map[k][1]);
+                    document.getElementById(k).value = val;
+                    document.getElementById(k).dispatchEvent(new Event('input'));
+                });
+                document.getElementById('field-readout').style.color = "#ff4444";
+                setTimeout(() => document.getElementById('field-readout').style.color = "white", 500);
+            }
 
-                const amplitude = parseFloat(document.getElementById('amplitude').value); 
-                const frequency = parseFloat(document.getElementById('frequency').value); 
-                const symmetry = parseFloat(document.getElementById('symmetry').value);   
-                const speed = parseFloat(document.getElementById('speed').value);         
-                const sharpness = parseFloat(document.getElementById('sharpness').value); 
-                const twist = parseFloat(document.getElementById('twist').value);         
-                const volume = parseFloat(document.getElementById('volume').value);       
-
-                const now = this.ctx.currentTime;
-
-                // 1. Pitch - Affected by Profile Multiplier
-                const targetFreq = (100 + (frequency * 100)) * this.profile.baseFreqMultiplier;
-                this.carrier.frequency.setTargetAtTime(targetFreq, now, 0.1);
-
-                // 2. Modulator Ratio - Affected by Profile Multiplier
-                const modFreq = targetFreq * (symmetry > 0 ? symmetry : 0.5) * this.profile.modFreqMultiplier;
-                this.modulator.frequency.setTargetAtTime(modFreq, now, 0.1);
-
-                // 3. Timbre/Resonance
-                const modDepth = amplitude * 500; 
-                this.modulatorGain.gain.setTargetAtTime(modDepth, now, 0.1);
-
-                // 4. Flux (Speed)
-                this.lfo.frequency.setTargetAtTime(speed, now, 0.1);
-                this.lfoGain.gain.setTargetAtTime(500, now, 0.1); 
-
-                // 5. Filter (Sharpness)
-                const cutoff = 200 + (sharpness * 5000);
-                this.filter.frequency.setTargetAtTime(cutoff, now, 0.1);
-
-                // 6. Master Volume
-                this.masterGain.gain.setTargetAtTime(volume * 0.5, now, 0.1);
+            animate() {
+                requestAnimationFrame(this.animate);
+                this.uniforms.time.value += 0.01 * this.params.speed;
+                this.uniforms.evolution.value += 0.005 * this.params.speed;
+                
+                if(this.being.currentMesh && !this.isDragging) {
+                    this.being.currentMesh.rotation.y += 0.002;
+                }
+                
+                this.being.updateProtomatter(this.uniforms.time.value, this.uniforms.amplitude.value);
+                this.renderer.render(this.scene, this.camera);
+                document.getElementById('evo-age').innerText = this.uniforms.evolution.value.toFixed(2);
             }
         }
 
-        const soundEngine = new SoundEngine();
-
-        // Toggle Button Handler
-        document.getElementById('audio-toggle').addEventListener('click', () => {
-            soundEngine.toggleAudio();
-        });
-
-        // Audio Init Handler
-        document.getElementById('start-audio-btn').addEventListener('click', () => {
-            soundEngine.init();
-            document.getElementById('audio-overlay').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('audio-overlay').style.display = 'none';
-            }, 500);
-            
-            // Sync with current mesh
-            if(currentMeshType) soundEngine.setShapeProfile(currentMeshType);
-        });
-
-        // --- 2. Three.js Setup (Existing) ---
-        const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x050505, 0.02);
-
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.z = 4;
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        document.getElementById('canvas-container').appendChild(renderer.domElement);
-
-        const ambientLight = new THREE.AmbientLight(0x404040, 2);
-        scene.add(ambientLight);
-
-        const pointLight1 = new THREE.PointLight(0x4ade80, 1, 10);
-        pointLight1.position.set(2, 2, 2);
-        scene.add(pointLight1);
-
-        const pointLight2 = new THREE.PointLight(0x60a5fa, 1, 10);
-        pointLight2.position.set(-2, -2, 2);
-        scene.add(pointLight2);
-        
-        const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        rimLight.position.set(0, 5, -5);
-        scene.add(rimLight);
-
-        // --- 3. The "Being" Shader Material ---
-        const vertexShader = `
-            uniform float time;
-            uniform float amplitude;
-            uniform float frequency;
-            uniform float symmetry;
-            uniform float sharpness;
-            uniform float twist;
-            
-            varying vec2 vUv;
-            varying float vDisplacement;
-            varying vec3 vNormal;
-            varying vec3 vPosition;
-            varying float vWarp; // Passed to fragment for coloring (Checkpoint 3 Prep)
-
-            // Simplex 3D Noise function (standard implementation)
-            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-            vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-            vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
-            vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-            float snoise(vec3 v) {
-                const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
-                const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
-
-                // First corner
-                vec3 i  = floor(v + dot(v, C.yyy) );
-                vec3 x0 = v - i + dot(i, C.xxx) ;
-
-                // Other corners
-                vec3 g = step(x0.yzx, x0.xyz);
-                vec3 l = 1.0 - g;
-                vec3 i1 = min( g.xyz, l.zxy );
-                vec3 i2 = max( g.xyz, l.zxy );
-
-                vec3 x1 = x0 - i1 + C.xxx;
-                vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
-                vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
-
-                // Permutations
-                i = mod289(i); 
-                vec4 p = permute( permute( permute( 
-                            i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
-                          + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
-                          + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
-
-                // Gradients: 7x7 points over a square, mapped onto an octahedron.
-                // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
-                float n_ = 0.142857142857; // 1.0/7.0
-                vec3  ns = n_ * D.wyz - D.xzx;
-
-                vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
-
-                vec4 x_ = floor(j * ns.z);
-                vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
-
-                vec4 x = x_ *ns.x + ns.yyyy;
-                vec4 y = y_ *ns.x + ns.yyyy;
-                vec4 h = 1.0 - abs(x) - abs(y);
-
-                vec4 b0 = vec4( x.xy, y.xy );
-                vec4 b1 = vec4( x.zw, y.zw );
-
-                vec4 s0 = floor(b0)*2.0 + 1.0;
-                vec4 s1 = floor(b1)*2.0 + 1.0;
-                vec4 sh = -step(h, vec4(0.0));
-
-                vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
-                vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
-
-                vec3 p0 = vec3(a0.xy,h.x);
-                vec3 p1 = vec3(a0.zw,h.y);
-                vec3 p2 = vec3(a1.xy,h.z);
-                vec3 p3 = vec3(a1.zw,h.w);
-
-                //Normalise gradients
-                vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-                p0 *= norm.x;
-                p1 *= norm.y;
-                p2 *= norm.z;
-                p3 *= norm.w;
-
-                // Mix final noise value
-                vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-                m = m * m;
-                return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
-                                              dot(p2,x2), dot(p3,x3) ) );
-            }
-
-            void main() {
-                vUv = uv;
-                vNormal = normal;
-                
-                // --- MORPHIC FIELD LOGIC (CHECKPOINT 2: TEMPORAL DRAG) ---
-                
-                // 1. Basic Position
-                vec3 pos = position;
-                
-                // 2. Twist
-                float angle = pos.y * twist;
-                float s = sin(angle);
-                float c = cos(angle);
-                mat2 rot = mat2(c, -s, s, c);
-                pos.xz = rot * pos.xz;
-
-                // 3. Symmetry
-                float rad = length(pos.xz);
-                float theta = atan(pos.z, pos.x);
-                if (symmetry > 1.0) {
-                    float sector = 6.28318 / floor(symmetry);
-                    theta = mod(theta, sector);
-                    theta = abs(theta - sector/2.0); 
-                }
-                vec3 symmetryPos = vec3(rad * cos(theta), pos.y, rad * sin(theta));
-
-                // 4. Domain Warping with Temporal Drag
-                vec3 warpInput = symmetryPos * frequency;
-                
-                // Checkpoint 2: The Deep Field (Memory) moves SLOWLY (10% speed)
-                float deepTime = time * 0.1;
-                
-                vec3 warpVec;
-                warpVec.x = snoise(warpInput + vec3(deepTime, 0.0, 0.0)); 
-                warpVec.y = snoise(warpInput + vec3(0.0, deepTime, 0.0) + 10.0);
-                warpVec.z = snoise(warpInput + vec3(0.0, 0.0, deepTime) + 20.0);
-                
-                // We pass the warp magnitude to the fragment shader for coloring later
-                vWarp = length(warpVec);
-
-                // Apply Warp
-                vec3 warpedPos = symmetryPos + warpVec * (amplitude * 0.5); 
-
-                // Layer 2: The Manifested Form (Surface) moves normally
-                float noiseVal = snoise(warpedPos * frequency + time);
-                
-                // 5. Sharpening
-                if (sharpness > 0.0) {
-                    noiseVal = max(0.0, noiseVal);
-                    noiseVal = pow(noiseVal, 1.0 - sharpness * 0.5); 
-                }
-
-                vDisplacement = noiseVal;
-                
-                // 6. Apply Displacement
-                vec3 newPosition = pos + normal * (noiseVal * amplitude);
-
-                vPosition = newPosition;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
-            }
-        `;
-
-        const fragmentShader = `
-            uniform float time;
-            uniform float glowIntensity;
-            
-            varying vec2 vUv;
-            varying float vDisplacement;
-            varying vec3 vNormal;
-            varying vec3 vPosition;
-            varying float vWarp; // Received from vertex shader
-
-            void main() {
-                // 1. Define Palette
-                vec3 voidColor = vec3(0.05, 0.1, 0.2);   // Deep space / Void
-                vec3 matterColor = vec3(0.2, 0.8, 0.6);  // Biological matter (Teal/Green)
-                vec3 energyColor = vec3(1.0, 0.2, 0.5);  // Raw Morphic Energy / Stress (Magenta)
-
-                // 2. Base Matter Mix (Height)
-                // We mix between void (low) and matter (high) based on physical displacement
-                float heightFactor = smoothstep(-0.2, 0.6, vDisplacement);
-                vec3 base = mix(voidColor, matterColor, heightFactor);
-
-                // 3. Apply Field Stress (Warp Magnitude)
-                // vWarp tells us how hard the "Deep Field" is twisting the geometry.
-                // High warp = High field resistance/memory = Hotter colors.
-                float stressFactor = smoothstep(0.2, 1.2, vWarp);
-                
-                // Mix the base color with the energy color based on stress
-                vec3 color = mix(base, energyColor, stressFactor * 0.7);
-
-                // 4. Lighting & Glow
-                vec3 viewDir = normalize(cameraPosition - vPosition);
-                // Fresnel: The "Rim Light" effect
-                float fresnel = pow(1.0 - dot(viewDir, vNormal), 2.5);
-
-                // Pulse
-                float pulse = 0.5 + 0.5 * sin(time * 2.0);
-
-                // Add Rim Light (Ethereal Glow)
-                color += vec3(0.5, 0.8, 1.0) * fresnel * glowIntensity;
-                
-                // Stress areas glow even harder
-                color += energyColor * fresnel * pulse * 0.3 * stressFactor; 
-
-                gl_FragColor = vec4(color, 0.9);
-            }
-        `;
-
-        const uniforms = {
-            time: { value: 0.0 },
-            amplitude: { value: 0.5 },
-            frequency: { value: 1.0 },
-            symmetry: { value: 1.0 },
-            sharpness: { value: 0.0 },
-            twist: { value: 0.0 },
-            glowIntensity: { value: 0.5 }
-        };
-
-        const material = new THREE.ShaderMaterial({
-            uniforms: uniforms,
-            vertexShader: vertexShader,
-            fragmentShader: fragmentShader,
-            wireframe: false,
-            transparent: true,
-            side: THREE.DoubleSide
-        });
-
-        // --- 4. Geometry / Being Management ---
-        let currentMesh;
-        let currentMeshType = 'lotus'; // Start type
-        
-        function addWireframe(mesh, geometry) {
-            const wireframeGeo = new THREE.WireframeGeometry(geometry);
-            const wireframeMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.05 });
-            const wireframe = new THREE.LineSegments(wireframeGeo, wireframeMat);
-            mesh.add(wireframe);
-        }
-
-        class SpiralCurve extends THREE.Curve {
-            constructor(scale = 1) { super(); this.scale = scale; }
-            getPoint(t) {
-                const angle = t * Math.PI * 10;
-                const radius = (1 - t) * 3;
-                const x = radius * Math.cos(angle);
-                const z = radius * Math.sin(angle);
-                const y = (t - 0.5) * 6;
-                return new THREE.Vector3(x, y, z).multiplyScalar(this.scale);
-            }
-        }
-
-        function createMesh(type) {
-            currentMeshType = type;
-            // Update sound profile immediately
-            soundEngine.setShapeProfile(type);
-
-            if (currentMesh) scene.remove(currentMesh);
-            
-            let geometry, mesh, count = 0;
-
-            if (type === 'merkaba') {
-                currentMesh = new THREE.Group();
-                const tGeo1 = new THREE.TetrahedronGeometry(1.5, 0);
-                const tGeo2 = new THREE.TetrahedronGeometry(1.5, 0);
-                tGeo2.rotateX(Math.PI / 2); tGeo2.rotateZ(Math.PI); 
-                const m1 = new THREE.Mesh(tGeo1, material);
-                const m2 = new THREE.Mesh(tGeo2, material);
-                addWireframe(m1, tGeo1); addWireframe(m2, tGeo2);
-                currentMesh.add(m1); currentMesh.add(m2);
-                count = tGeo1.attributes.position.count * 2;
-            } else if (type === 'lotus') {
-                currentMesh = new THREE.Group();
-                const petalGeo = new THREE.SphereGeometry(1, 32, 32);
-                const center = new THREE.Mesh(petalGeo, material);
-                addWireframe(center, petalGeo);
-                currentMesh.add(center);
-                for(let i = 0; i < 6; i++) {
-                    const angle = (i / 6) * Math.PI * 2;
-                    const x = Math.cos(angle) * 1.0;
-                    const z = Math.sin(angle) * 1.0;
-                    const petal = new THREE.Mesh(petalGeo, material);
-                    petal.position.set(x, 0, z);
-                    addWireframe(petal, petalGeo);
-                    currentMesh.add(petal);
-                }
-                currentMesh.rotation.x = 0.5;
-                count = petalGeo.attributes.position.count * 7;
-            } else if (type === 'spiral') {
-                const path = new SpiralCurve(1);
-                geometry = new THREE.TubeGeometry(path, 128, 0.4, 16, false);
-                mesh = new THREE.Mesh(geometry, material);
-                addWireframe(mesh, geometry);
-                currentMesh = mesh;
-                count = geometry.attributes.position.count;
-            } else {
-                if (type === 'sphere') geometry = new THREE.IcosahedronGeometry(1.5, 40); 
-                else if (type === 'torus') geometry = new THREE.TorusKnotGeometry(1, 0.3, 200, 30);
-                else if (type === 'capsule') geometry = new THREE.CylinderGeometry(0.8, 0.8, 3, 60, 60, true);
-                else if (type === 'ether') geometry = new THREE.DodecahedronGeometry(1.5, 0);
-                else if (type === 'crystal') geometry = new THREE.OctahedronGeometry(1.5, 0);
-
-                mesh = new THREE.Mesh(geometry, material);
-                addWireframe(mesh, geometry);
-                currentMesh = mesh;
-                count = geometry.attributes.position.count;
-            }
-            
-            scene.add(currentMesh);
-            document.getElementById('vertex-count').innerText = count;
-            document.getElementById('geo-type').innerText = type.charAt(0).toUpperCase() + type.slice(1);
-        }
-
-        createMesh('lotus');
-
-        // --- 5. Input Handling ---
-        const inputs = ['amplitude', 'frequency', 'symmetry', 'speed', 'sharpness', 'twist', 'glow', 'volume'];
-        
-        inputs.forEach(id => {
-            const el = document.getElementById(id);
-            const disp = document.getElementById('val-' + id);
-            
-            el.addEventListener('input', (e) => {
-                const val = parseFloat(e.target.value);
-                disp.innerText = val;
-                
-                // Update Visual Uniforms
-                if(id === 'amplitude') uniforms.amplitude.value = val;
-                if(id === 'frequency') uniforms.frequency.value = val;
-                if(id === 'symmetry') uniforms.symmetry.value = val;
-                if(id === 'sharpness') uniforms.sharpness.value = val;
-                if(id === 'twist') uniforms.twist.value = val;
-                if(id === 'glow') uniforms.glowIntensity.value = val;
-                
-                // Update Sound Engine
-                soundEngine.updateFromUI();
-            });
-        });
-
-        window.changeBase = (type) => {
-            createMesh(type);
-        };
-
-        window.mutate = () => {
-            const r = (min, max) => Math.random() * (max - min) + min;
-            
-            const newAmp = r(0.2, 1.5);
-            const newFreq = r(0.5, 4.0);
-            const newSym = Math.floor(r(1, 9));
-            const newTwist = r(0, 3.0);
-            
-            document.getElementById('amplitude').value = newAmp;
-            document.getElementById('frequency').value = newFreq;
-            document.getElementById('symmetry').value = newSym;
-            document.getElementById('twist').value = newTwist;
-            
-            inputs.forEach(id => document.getElementById(id).dispatchEvent(new Event('input')));
-            
-            const readout = document.getElementById('field-readout');
-            readout.innerText = "MUTATING...";
-            readout.style.color = "#ff4444";
-            setTimeout(() => {
-                const status = (soundEngine.ctx && soundEngine.ctx.state === 'running') ? "RESONATING" : "MUTED";
-                readout.innerText = status;
-                readout.style.color = "white";
-            }, 500);
-        };
-
-        // --- 6. Interaction & Loop ---
-        let isDragging = false;
-        let previousMousePosition = { x: 0, y: 0 };
-        let rotationSpeed = 0.005;
-
-        // Zoom Handler
-        document.addEventListener('wheel', (e) => {
-            // Adjust zoom speed
-            const zoomSpeed = 0.005;
-            camera.position.z += e.deltaY * zoomSpeed;
-            
-            // Clamp Zoom Limits (Min: 2, Max: 15)
-            camera.position.z = Math.max(2, Math.min(15, camera.position.z));
-        });
-
-        document.addEventListener('mousedown', () => isDragging = true);
-        document.addEventListener('mouseup', () => isDragging = false);
-        
-        document.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                const deltaMove = {
-                    x: e.offsetX - previousMousePosition.x,
-                    y: e.offsetY - previousMousePosition.y
-                };
-                if (currentMesh) {
-                    currentMesh.rotation.y += deltaMove.x * rotationSpeed;
-                    currentMesh.rotation.x += deltaMove.y * rotationSpeed;
-                }
-            }
-            previousMousePosition = { x: e.offsetX, y: e.offsetY };
-        });
-        
-        // Touch
-        document.addEventListener('touchstart', (e) => {
-            isDragging = true;
-            previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        });
-        document.addEventListener('touchend', () => isDragging = false);
-        document.addEventListener('touchmove', (e) => {
-            if (isDragging) {
-                const deltaMove = {
-                    x: e.touches[0].clientX - previousMousePosition.x,
-                    y: e.touches[0].clientY - previousMousePosition.y
-                };
-                if (currentMesh) {
-                    currentMesh.rotation.y += deltaMove.x * rotationSpeed;
-                    currentMesh.rotation.x += deltaMove.y * rotationSpeed;
-                }
-                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            }
-        });
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            const speed = parseFloat(document.getElementById('speed').value);
-            uniforms.time.value += 0.01 * speed;
-
-            if (currentMesh && !isDragging) {
-                currentMesh.rotation.y += 0.002;
-            }
-
-            renderer.render(scene, camera);
-        }
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        animate();
+        window.onload = () => new MorphicApp();
 
     </script>
 </body>
