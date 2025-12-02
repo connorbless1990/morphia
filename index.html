@@ -328,11 +328,11 @@
                 switch(shapeType) {
                     case 'merkaba':
                         this.profile = { 
-                            carrierType: 'sawtooth', 
-                            modulatorType: 'square', 
-                            baseFreqMultiplier: 1.5, // Higher pitch
-                            modFreqMultiplier: 2.0,  // Energetic ratios
-                            name: 'Energetic/Sharp'
+                            carrierType: 'triangle', // Changed from Sawtooth to Triangle for "Chime" quality
+                            modulatorType: 'sine',   // Sine modulation creates pure bell tones
+                            baseFreqMultiplier: 0.8, // Lower pitch for "Primordial" weight
+                            modFreqMultiplier: 1.5,  // Perfect Fifth ratio for sacred resonance
+                            name: 'Primordial Chime'
                         };
                         break;
                     case 'ether':
@@ -511,6 +511,7 @@
             varying float vDisplacement;
             varying vec3 vNormal;
             varying vec3 vPosition;
+            varying float vWarp; // Passed to fragment for coloring (Checkpoint 3 Prep)
 
             // Simplex 3D Noise function (standard implementation)
             vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -590,17 +591,19 @@
                 vUv = uv;
                 vNormal = normal;
                 
-                // --- MORPHIC FIELD LOGIC ---
+                // --- MORPHIC FIELD LOGIC (CHECKPOINT 2: TEMPORAL DRAG) ---
+                
+                // 1. Basic Position
                 vec3 pos = position;
                 
-                // Twist
+                // 2. Twist
                 float angle = pos.y * twist;
                 float s = sin(angle);
                 float c = cos(angle);
                 mat2 rot = mat2(c, -s, s, c);
                 pos.xz = rot * pos.xz;
 
-                // Symmetry
+                // 3. Symmetry
                 float rad = length(pos.xz);
                 float theta = atan(pos.z, pos.x);
                 if (symmetry > 1.0) {
@@ -610,10 +613,27 @@
                 }
                 vec3 symmetryPos = vec3(rad * cos(theta), pos.y, rad * sin(theta));
 
-                // Noise
-                float noiseVal = snoise(symmetryPos * frequency + time);
+                // 4. Domain Warping with Temporal Drag
+                vec3 warpInput = symmetryPos * frequency;
                 
-                // Sharpening
+                // Checkpoint 2: The Deep Field (Memory) moves SLOWLY (10% speed)
+                float deepTime = time * 0.1;
+                
+                vec3 warpVec;
+                warpVec.x = snoise(warpInput + vec3(deepTime, 0.0, 0.0)); 
+                warpVec.y = snoise(warpInput + vec3(0.0, deepTime, 0.0) + 10.0);
+                warpVec.z = snoise(warpInput + vec3(0.0, 0.0, deepTime) + 20.0);
+                
+                // We pass the warp magnitude to the fragment shader for coloring later
+                vWarp = length(warpVec);
+
+                // Apply Warp
+                vec3 warpedPos = symmetryPos + warpVec * (amplitude * 0.5); 
+
+                // Layer 2: The Manifested Form (Surface) moves normally
+                float noiseVal = snoise(warpedPos * frequency + time);
+                
+                // 5. Sharpening
                 if (sharpness > 0.0) {
                     noiseVal = max(0.0, noiseVal);
                     noiseVal = pow(noiseVal, 1.0 - sharpness * 0.5); 
@@ -621,7 +641,7 @@
 
                 vDisplacement = noiseVal;
                 
-                // Displacement
+                // 6. Apply Displacement
                 vec3 newPosition = pos + normal * (noiseVal * amplitude);
 
                 vPosition = newPosition;
@@ -637,20 +657,40 @@
             varying float vDisplacement;
             varying vec3 vNormal;
             varying vec3 vPosition;
+            varying float vWarp; // Received from vertex shader
 
             void main() {
-                vec3 deepColor = vec3(0.1, 0.4, 0.6); // Deep Blue
-                vec3 highColor = vec3(0.4, 0.9, 0.5); // Bright Green
+                // 1. Define Palette
+                vec3 voidColor = vec3(0.05, 0.1, 0.2);   // Deep space / Void
+                vec3 matterColor = vec3(0.2, 0.8, 0.6);  // Biological matter (Teal/Green)
+                vec3 energyColor = vec3(1.0, 0.2, 0.5);  // Raw Morphic Energy / Stress (Magenta)
+
+                // 2. Base Matter Mix (Height)
+                // We mix between void (low) and matter (high) based on physical displacement
+                float heightFactor = smoothstep(-0.2, 0.6, vDisplacement);
+                vec3 base = mix(voidColor, matterColor, heightFactor);
+
+                // 3. Apply Field Stress (Warp Magnitude)
+                // vWarp tells us how hard the "Deep Field" is twisting the geometry.
+                // High warp = High field resistance/memory = Hotter colors.
+                float stressFactor = smoothstep(0.2, 1.2, vWarp);
                 
-                float mixFactor = smoothstep(-0.5, 0.5, vDisplacement);
-                vec3 color = mix(deepColor, highColor, mixFactor);
-                
+                // Mix the base color with the energy color based on stress
+                vec3 color = mix(base, energyColor, stressFactor * 0.7);
+
+                // 4. Lighting & Glow
                 vec3 viewDir = normalize(cameraPosition - vPosition);
-                float fresnel = pow(1.0 - dot(viewDir, vNormal), 2.0);
-                
+                // Fresnel: The "Rim Light" effect
+                float fresnel = pow(1.0 - dot(viewDir, vNormal), 2.5);
+
+                // Pulse
                 float pulse = 0.5 + 0.5 * sin(time * 2.0);
-                color += vec3(0.2, 0.8, 1.0) * fresnel * glowIntensity;
-                color += vec3(0.8, 1.0, 0.8) * fresnel * pulse * 0.2;
+
+                // Add Rim Light (Ethereal Glow)
+                color += vec3(0.5, 0.8, 1.0) * fresnel * glowIntensity;
+                
+                // Stress areas glow even harder
+                color += energyColor * fresnel * pulse * 0.3 * stressFactor; 
 
                 gl_FragColor = vec4(color, 0.9);
             }
