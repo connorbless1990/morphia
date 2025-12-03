@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MORPHIA: Dualistic Field</title>
+    <title>MORPHIA: A morphic field visualizer</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -98,10 +98,10 @@
                 <div class="text-2xl text-green-400 mb-2 font-bold tracking-widest group-hover:text-white">PLATONIC</div>
                 <div class="h-px w-full bg-green-900 mb-4 group-hover:bg-green-500"></div>
                 <p class="text-[10px] text-gray-400 text-center leading-relaxed">
-                    Observe the predetermined sacred geometries. 
+                    Observe predetermined sacred geometries. 
                     <br><br>
                 </p>
-                <div class="mt-8 text-xs border border-green-800 px-4 py-2 text-green-600 group-hover:bg-green-500 group-hover:text-black transition-colors">OPEN</div>
+                <div class="mt-8 text-xs border border-green-800 px-4 py-2 text-green-600 group-hover:bg-green-500 group-hover:text-black transition-colors">INITIATE</div>
             </div>
 
             <!-- PATH 2: EXPERIMENTAL -->
@@ -109,12 +109,13 @@
                 <div class="text-2xl text-yellow-400 mb-2 font-bold tracking-widest group-hover:text-white">QUANTUM</div>
                 <div class="h-px w-full bg-yellow-900 mb-4 group-hover:bg-yellow-500"></div>
                 <p class="text-[10px] text-gray-400 text-center leading-relaxed">
-                    Seize the cursor and warp the gravity well.
+                    Use the cursor to warp the gravity well.
                     <br><br>
                 </p>
-                <div class="mt-8 text-xs border border-yellow-800 px-4 py-2 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-black transition-colors">OPEN</div>
+                <div class="mt-8 text-xs border border-yellow-800 px-4 py-2 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-black transition-colors">IGNITE</div>
             </div>
         </div>
+        <p class="mt-12 text-[10px] text-gray-600 uppercase tracking-widest animate-pulse">Headphones Recommended. Silent Switch Off.</p>
     </div>
 
     <!-- INFO MODAL -->
@@ -155,7 +156,7 @@
             <!-- STATUS PANEL -->
             <div id="panel-status" class="glass-panel p-4 inline-block min-w-[160px] md:min-w-[200px] group">
                 <div class="flex justify-between items-center cursor-pointer" onclick="togglePanel('panel-status')">
-                    <div class="text-[10px] text-green-500 font-bold opacity-60 tracking-widest">FIELD STATUS</div>
+                    <div class="text-[10px] text-green-500 font-bold opacity-60 tracking-widest">FIELD</div>
                     <div class="toggle-icon text-green-500 text-[10px]">▼</div>
                 </div>
                 
@@ -271,7 +272,7 @@
             return tex;
         }
 
-        // --- 1. AUDIO SYSTEM (iOS Hardened) ---
+        // --- 1. AUDIO SYSTEM (iOS Hardened with Warm-Up Hack) ---
         class AudioCore {
             constructor() {
                 this.ctx = null;
@@ -291,16 +292,30 @@
                 this.master.gain.value = 0.0; // Start MUTED but RUNNING
                 this.master.connect(this.ctx.destination);
 
-                // Create the infinite loops immediately
+                // --- IOS WAKE UP HACK ---
+                // Play a silent buffer instantly to force the hardware to wake up
+                const empty = this.ctx.createBuffer(1, 1, 22050);
+                const src = this.ctx.createBufferSource();
+                src.buffer = empty;
+                src.connect(this.ctx.destination);
+                src.start(0);
+                
+                // Create the infinite loops
                 this.setupLoops();
                 
-                // Hard resume for iOS
+                // Hard resume
                 if(this.ctx.state === 'suspended') {
                     this.ctx.resume();
                 }
 
                 this.isInit = true;
-                console.log("Audio Unlocked & Running (Muted)");
+                this.isEnabled = true; // Auto-enable on click
+                
+                // Fade in automatically
+                const t = this.ctx.currentTime;
+                this.master.gain.setTargetAtTime(0.3, t, 1.0); // 2 second fade in
+                
+                console.log("Audio Unlocked, Warmed Up, and Fading In");
             }
 
             setupLoops() {
@@ -342,16 +357,14 @@
                 this.lfo.start();
             }
 
-            // Phase 2: User Toggles Volume
+            // Phase 2: User Toggles Volume (Mute/Unmute now)
             toggle() {
-                // Double check resume just in case
-                if(this.ctx && this.ctx.state === 'suspended') {
-                    this.ctx.resume();
-                }
+                if(!this.ctx) return false;
+                if(this.ctx.state === 'suspended') this.ctx.resume();
 
                 this.isEnabled = !this.isEnabled;
-                // Ramp volume smoothly
                 const t = this.ctx.currentTime;
+                
                 if(this.isEnabled) {
                     this.master.gain.setTargetAtTime(0.3, t, 0.1);
                     return true;
@@ -785,6 +798,11 @@
                 const start = (mode) => {
                     // PHASE 1: UNLOCK AUDIO ON START
                     this.audio.unlock();
+                    
+                    // Update button to show active state
+                    const btn = document.getElementById('audio-toggle');
+                    btn.innerText = "AUDIO ACTIVE";
+                    btn.classList.add('text-green-400');
                     
                     this.mode = mode;
                     document.getElementById('overlay').style.opacity = 0;
