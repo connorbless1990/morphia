@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Morphic Fields Visualizer</title>
+    <title>MORPHIA: Dualistic Field</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,16 +11,22 @@
 
     <style>
         body { margin: 0; overflow: hidden; background-color: #000500; color: #aaffaa; font-family: 'Courier New', monospace; user-select: none; }
-        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; cursor: crosshair; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
+        /* Cursor logic */
+        .cursor-cross { cursor: crosshair; }
+        .cursor-move { cursor: move; }
+
+        /* UI Elements */
         .glass-panel {
-            background: rgba(0, 20, 10, 0.3);
+            background: rgba(0, 20, 10, 0.6);
             border: 1px solid rgba(51, 255, 51, 0.2);
             box-shadow: 0 0 20px rgba(51, 255, 51, 0.05);
             backdrop-filter: blur(8px);
             border-radius: 4px;
         }
 
+        /* Sliders */
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none; height: 14px; width: 14px;
@@ -29,14 +35,32 @@
         }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 2px; background: rgba(51, 255, 51, 0.2); }
 
+        /* Buttons */
         .geo-btn { transition: all 0.2s; text-transform: uppercase; letter-spacing: 2px; font-size: 10px; }
         .geo-btn:hover { background: #33ff33; color: black; box-shadow: 0 0 15px #33ff33; }
         .geo-btn.active { background: #33ff33; color: black; box-shadow: 0 0 20px #33ff33; font-weight: bold; }
 
+        .info-btn {
+            font-weight: bold; border: 1px solid #1a441a; color: #1a441a;
+            transition: all 0.3s;
+        }
+        .info-btn:hover { border-color: #33ff33; color: #33ff33; box-shadow: 0 0 10px rgba(51,255,51,0.2); }
+
+        /* Overlays */
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; z-index: 100; display: flex; flex-direction: column;
             justify-content: center; align-items: center; transition: opacity 1.5s;
+        }
+
+        #info-modal { z-index: 90; transition: opacity 0.3s; }
+
+        .mode-card {
+            border: 1px solid #1a441a; padding: 2rem; transition: all 0.3s ease; cursor: pointer; background: rgba(0,20,0,0.8);
+        }
+        .mode-card:hover {
+            border-color: #33ff33; background: rgba(0,40,0,0.9); transform: translateY(-5px);
+            box-shadow: 0 10px 30px -10px rgba(51,255,51,0.2);
         }
     </style>
 </head>
@@ -44,34 +68,102 @@
 
     <div id="overlay">
         <h1 class="text-6xl text-green-500 font-bold mb-2 tracking-widest text-center" style="text-shadow: 0 0 20px rgba(51,255,51,0.5);">MORPHIA</h1>
-        <p class="text-gray-500 mb-12 text-sm text-center tracking-wider uppercase">
-            <span class="text-xs text-green-900 mt-4 block">Evolution warps geometry. Change causes stress.</span>
-        </p>
-        <button id="ignite-btn" class="px-10 py-4 border border-green-600 text-green-500 hover:bg-green-500 hover:text-black transition-all uppercase tracking-[0.3em] font-bold text-sm">
-            OPEN FIELD
-        </button>
+
+        <div class="flex gap-8 items-stretch flex-wrap justify-center">
+            <div id="btn-classic" class="mode-card flex flex-col items-center w-64 group">
+                <div class="text-2xl text-green-400 mb-2 font-bold tracking-widest group-hover:text-white">PLATONIC</div>
+                <div class="h-px w-full bg-green-900 mb-4 group-hover:bg-green-500"></div>
+                <p class="text-[10px] text-gray-400 text-center leading-relaxed">
+                    Observe the predetermined sacred geometries.
+                    <br><br>
+                </p>
+                <div class="mt-8 text-xs border border-green-800 px-4 py-2 text-green-600 group-hover:bg-green-500 group-hover:text-black transition-colors">INITIATE</div>
+            </div>
+
+            <div id="btn-experimental" class="mode-card flex flex-col items-center w-64 group">
+                <div class="text-2xl text-yellow-400 mb-2 font-bold tracking-widest group-hover:text-white">QUANTUM</div>
+                <div class="h-px w-full bg-yellow-900 mb-4 group-hover:bg-yellow-500"></div>
+                <p class="text-[10px] text-gray-400 text-center leading-relaxed">
+                    Seize the your cursor and warp the gravity well.
+                    <br><br>
+                </p>
+                <div class="mt-8 text-xs border border-yellow-800 px-4 py-2 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-black transition-colors">IGNITE</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="info-modal" class="hidden absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center pointer-events-auto">
+        <div class="glass-panel max-w-2xl w-full p-10 relative m-4">
+            <button id="close-info" class="absolute top-4 right-4 text-green-700 hover:text-green-400 text-xl font-bold">&times;</button>
+
+            <h2 class="text-2xl text-green-400 font-bold mb-6 tracking-widest border-b border-green-900/50 pb-4">SYSTEM MANUAL</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-sm text-green-300 font-bold mb-2 uppercase tracking-wider">Platonic Mode</h3>
+                    <p class="text-[11px] text-gray-400 leading-relaxed mb-4">
+                        A passive visualization of Sheldrake's Morphic Resonance. Matter attempts to conform to invisible geometric ideals.
+                    </p>
+                    <ul class="text-[10px] text-green-600 space-y-2 list-disc pl-4">
+                        <li><span class="text-green-400">Resonance:</span> The strength of the field (Order).</li>
+                        <li><span class="text-blue-400">Vitality:</span> The energy of the particles (Chaos).</li>
+                        <li><span class="text-yellow-500">Evolution:</span> Warps the sacred geometry using 4D noise.</li>
+                        <li><span class="text-white">Stability:</span> Increases over time. Changes cause stress.</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="text-sm text-yellow-300 font-bold mb-2 uppercase tracking-wider">Sculptor Mode</h3>
+                    <p class="text-[11px] text-gray-400 leading-relaxed mb-4">
+                        You become the attractor. The field is empty until will is impressed upon it.
+                    </p>
+                    <ul class="text-[10px] text-yellow-600 space-y-2 list-disc pl-4">
+                        <li><span class="text-yellow-400">L-Click + Drag:</span> Creates gravity. Pulls particles to your cursor.</li>
+                        <li><span class="text-yellow-400">Volumetric Brush:</span> Move slowly for dense clouds, fast for scattered strands.</li>
+                        <li><span class="text-gray-400">R-Click + Drag:</span> Rotate the camera view.</li>
+                        <li><span class="text-red-400">Reset:</span> Collapses the field to a singularity.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="mt-8 pt-4 border-t border-green-900/30 text-center">
+                <p class="text-[9px] text-green-800 uppercase tracking-[0.2em]">"Evolution warps geometry. Change causes stress."</p>
+            </div>
+        </div>
     </div>
 
     <div id="canvas-container"></div>
 
     <div class="absolute top-0 left-0 w-full h-full pointer-events-none p-6 flex flex-col justify-between z-10">
-        <div class="glass-panel p-4 pointer-events-auto inline-block min-w-[200px]">
-            <div class="text-[10px] text-green-500 font-bold mb-1 opacity-60 tracking-widest">FIELD STATUS</div>
-            <div class="text-3xl font-bold tracking-tighter text-green-400" id="field-status" style="text-shadow: 0 0 10px rgba(51,255,51,0.3);">CHAOS</div>
 
-            <div class="flex flex-col mt-4 border-t border-green-900/30 pt-3 gap-2">
-                <div class="flex justify-between text-[10px] text-green-400 opacity-80">
-                    <span>COHERENCE</span>
-                    <span id="field-stability">0%</span>
+        <div class="flex justify-between items-start w-full pointer-events-auto">
+            <div class="glass-panel p-4 inline-block min-w-[200px]">
+                <div class="text-[10px] text-green-500 font-bold mb-1 opacity-60 tracking-widest">FIELD STATUS</div>
+                <div class="text-3xl font-bold tracking-tighter text-green-400" id="field-status" style="text-shadow: 0 0 10px rgba(51,255,51,0.3);">WAITING</div>
+
+                <div class="flex flex-col mt-4 border-t border-green-900/30 pt-3 gap-2">
+                    <div class="flex justify-between text-[10px] text-green-400 opacity-80">
+                        <span>COHERENCE</span>
+                        <span id="field-stability">0%</span>
+                    </div>
+                    <div class="w-full h-1 bg-green-900/30 rounded overflow-hidden">
+                        <div id="stability-bar" class="h-full bg-green-400 shadow-[0_0_8px_#4ade80]" style="width: 0%; transition: width 0.2s;"></div>
+                    </div>
                 </div>
-                <div class="w-full h-1 bg-green-900/30 rounded overflow-hidden">
-                    <div id="stability-bar" class="h-full bg-green-400 shadow-[0_0_8px_#4ade80]" style="width: 0%; transition: width 0.2s;"></div>
+
+                <div id="exp-tip" class="hidden mt-4 text-[9px] text-yellow-500 border-t border-yellow-900/30 pt-2">
+                    L-CLICK + DRAG TO SCULPT<br>R-CLICK TO ROTATE
                 </div>
             </div>
+
+            <button id="open-info" class="info-btn w-8 h-8 flex items-center justify-center rounded bg-black/20 backdrop-blur text-xs font-serif">
+                i
+            </button>
         </div>
 
         <div class="glass-panel w-full md:w-96 p-8 pointer-events-auto self-end flex flex-col gap-8">
-            <div>
+
+            <div id="panel-archetypes">
                 <div class="text-[9px] text-green-500 uppercase tracking-widest mb-3 border-b border-green-900/30 pb-2 opacity-60">Geometric Archetypes</div>
                 <div class="grid grid-cols-3 gap-2">
                     <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="sphere">SPHERE</button>
@@ -83,24 +175,32 @@
                 </div>
             </div>
 
+            <div id="panel-experimental" class="hidden">
+                <div class="text-[9px] text-yellow-500 uppercase tracking-widest mb-3 border-b border-yellow-900/30 pb-2 opacity-60">Field Manipulation</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="exp-reset" class="geo-btn text-yellow-500 border border-yellow-900/30 py-3 hover:shadow-yellow-500">RESET FIELD</button>
+                    <button id="exp-scramble" class="geo-btn text-yellow-500 border border-yellow-900/30 py-3 hover:shadow-yellow-500">SCRAMBLE</button>
+                </div>
+            </div>
+
             <div class="space-y-6">
                 <div>
                     <div class="flex justify-between text-[10px] mb-2 font-bold tracking-wider">
-                        <span class="text-green-400">RESONANCE (the strength of the field)</span>
+                        <span class="text-green-400">RESONANCE (ORDER)</span>
                         <span id="val-resonance" class="text-green-200">0.10</span>
                     </div>
                     <input type="range" id="resonance" min="0" max="1" step="0.01" value="0.1">
                 </div>
                 <div>
                     <div class="flex justify-between text-[10px] mb-2 font-bold tracking-wider">
-                        <span class="text-blue-400">VITALITY (random energy/chaos)</span>
+                        <span class="text-blue-400">VITALITY (CHAOS)</span>
                         <span id="val-vitality" class="text-blue-200">0.80</span>
                     </div>
                     <input type="range" id="vitality" min="0" max="1" step="0.01" value="0.8">
                 </div>
                 <div>
                     <div class="flex justify-between text-[10px] mb-2 font-bold tracking-wider">
-                        <span class="text-yellow-500">WARP (noise added to the system)</span>
+                        <span class="text-yellow-500">EVOLUTION (WARPING)</span>
                         <span id="val-evolution" class="text-yellow-200">1.0</span>
                     </div>
                     <input type="range" id="evolution" min="1" max="5" step="0.1" value="1.0">
@@ -120,7 +220,7 @@
 
     <script>
         const rand = (min, max) => Math.random() * (max - min) + min;
-        const simplex = new SimplexNoise(); // Initialize Noise
+        const simplex = new SimplexNoise();
 
         // --- 1. AUDIO SYSTEM ---
         class AudioCore {
@@ -160,7 +260,7 @@
             }
         }
 
-        // --- 2. MORPHIC BRAIN (Logic) ---
+        // --- 2. MORPHIC BRAIN ---
         class MorphicBrain {
             constructor() {
                 this.stability = 0;
@@ -168,16 +268,11 @@
             }
             reset() { this.stability = 0; this.startTime = performance.now() * 0.001; }
             trauma() { this.stability = 0; this.startTime = performance.now() * 0.001; }
-
-            // NEW: Stress function called when sliders move
             stress(amount) {
-                // Reduces stability but doesn't wipe it
                 this.stability = Math.max(0, this.stability - amount);
-                // Adjust start time so it matches the new stability level (doesn't jump back)
                 const time = performance.now() * 0.001;
                 this.startTime = time - (this.stability * 60);
             }
-
             update(time, resonance, vitality) {
                 if (vitality > resonance + 0.1) {
                     this.stability = Math.max(0, this.stability - 0.005);
@@ -186,7 +281,6 @@
                 }
                 const age = time - this.startTime;
                 this.stability = age / 60.0;
-
                 document.getElementById('field-stability').innerText = Math.floor(this.stability * 100) + "%";
                 const barWidth = Math.min(this.stability * 100, 100);
                 document.getElementById('stability-bar').style.width = barWidth + "%";
@@ -200,15 +294,38 @@
             }
         }
 
-        // --- 3. ARCHITECT (Procedural Geometry) ---
+        // --- 3. ARCHITECT (With Volumetric Brush) ---
         class Architect {
+            sculpt(targets, point, radius, strength) {
+                const count = targets.length / 3;
+                const rSq = radius * radius;
+
+                for(let i=0; i<count; i++) {
+                    const ix=i*3, iy=i*3+1, iz=i*3+2;
+                    const dx = targets[ix] - point.x;
+                    const dy = targets[iy] - point.y;
+                    const dz = targets[iz] - point.z;
+                    const distSq = dx*dx + dy*dy + dz*dz;
+
+                    if (distSq < rSq) {
+                        const force = strength * (1 - (distSq/rSq));
+                        // Volumetric jitter to prevent clumping
+                        const jitterX = (Math.random() - 0.5) * 2.0;
+                        const jitterY = (Math.random() - 0.5) * 2.0;
+                        const jitterZ = (Math.random() - 0.5) * 2.0;
+
+                        targets[ix] -= (dx - jitterX) * force;
+                        targets[iy] -= (dy - jitterY) * force;
+                        targets[iz] -= (dz - jitterZ) * force;
+                    }
+                }
+            }
+
             generateTargets(shapeName, count, evolution) {
                 const targets = new Float32Array(count * 3);
                 let geo;
-                // Base size logic
                 const scale = 1.0;
 
-                // 1. Generate Base Archetype
                 switch(shapeName) {
                     case 'torus': geo = new THREE.TorusKnotGeometry(2.5 * scale, 0.6, 150, 20); break;
                     case 'merkaba': return this._generateMerkaba(targets, count, scale, evolution);
@@ -220,8 +337,7 @@
 
                 if(geo) {
                     const pos = geo.attributes.position;
-                    // Pre-calculate noise scale based on Evolution
-                    const noiseAmp = (evolution - 1.0) * 0.8; // At 1.0, no noise. At 5.0, lots.
+                    const noiseAmp = (evolution - 1.0) * 0.8;
                     const noiseFreq = 0.5;
 
                     for(let i=0; i<count; i++) {
@@ -230,20 +346,13 @@
                         let py = pos.getY(index);
                         let pz = pos.getZ(index);
 
-                        // NEW: Procedural Warping
                         if(evolution > 1.0) {
-                            // Normalize roughly to get direction
                             const len = Math.sqrt(px*px + py*py + pz*pz) || 1;
                             const nx = px/len, ny = py/len, nz = pz/len;
-
-                            // 3D Noise offset
                             const n = simplex.noise3D(nx*noiseFreq, ny*noiseFreq, nz*noiseFreq + (evolution*0.1));
-
-                            // Push vertex out/in based on noise
                             const disp = 1 + (n * noiseAmp);
                             px *= disp; py *= disp; pz *= disp;
                         }
-
                         targets[i*3] = px; targets[i*3+1] = py; targets[i*3+2] = pz;
                     }
                     geo.dispose();
@@ -252,7 +361,6 @@
             }
 
             _generateMerkaba(t, c, s, evo) {
-                // Procedural warp logic applied to manual generation
                 const g1 = new THREE.TetrahedronGeometry(4*s,0), g2 = new THREE.TetrahedronGeometry(4*s,0);
                 g2.rotateX(Math.PI/2); g2.rotateZ(Math.PI/4);
                 const p1=g1.attributes.position, p2=g2.attributes.position;
@@ -262,7 +370,6 @@
                     const g = Math.random()>0.5?p1:p2;
                     const idx = Math.floor(rand(0,g.count));
                     let x=g.getX(idx), y=g.getY(idx), z=g.getZ(idx);
-
                     if(evo > 1.0) {
                         const n = simplex.noise3D(x*0.2, y*0.2, z*0.2);
                         const disp = 1 + (n * noiseAmp);
@@ -277,20 +384,15 @@
                 const g = new THREE.SphereGeometry(1.2*s,16,16); const pos=g.attributes.position;
                 const ctrs = [{x:0,y:0,z:0},{x:2,y:0,z:0},{x:-2,y:0,z:0},{x:1,y:1.73,z:0},{x:-1,y:1.73,z:0},{x:1,y:-1.73,z:0},{x:-1,y:-1.73,z:0}];
                 const noiseAmp = (evo - 1.0) * 0.3;
-
                 for(let i=0; i<c; i++) {
                     const ct = ctrs[Math.floor(Math.random()*ctrs.length)];
                     const idx = Math.floor(rand(0,pos.count));
-                    // Base position relative to center
                     let lx = pos.getX(idx), ly = pos.getY(idx), lz = pos.getZ(idx);
-
-                    // Warp the sphere
                     if(evo > 1.0) {
                         const n = simplex.noise3D(lx+ct.x, ly+ct.y, lz+ct.z);
                         const disp = 1 + (n * noiseAmp);
                         lx*=disp; ly*=disp; lz*=disp;
                     }
-
                     t[i*3]=lx+ct.x*s; t[i*3+1]=ly+ct.y*s; t[i*3+2]=lz+ct.z*s;
                 }
                 g.dispose(); return t;
@@ -298,23 +400,20 @@
 
             _chaos(t, c) {
                 for(let i=0; i<c; i++) {
-                    const r = 20 * Math.cbrt(Math.random());
+                    const r = 15 * Math.cbrt(Math.random());
                     const th = rand(0, Math.PI*2), ph = Math.acos(rand(-1, 1));
                     t[i*3]=r*Math.sin(ph)*Math.cos(th); t[i*3+1]=r*Math.sin(ph)*Math.sin(th); t[i*3+2]=r*Math.cos(ph);
                 }
             }
 
             _spiral(t, c, evo) {
-                // Spiral twist is inherently procedural
                 const tw = evo*0.8;
                 const noiseAmp = Math.max(0, evo-1.0);
                 for(let i=0; i<c; i++) {
                     const tt = i/c, ang = tt*Math.PI*20*tw, r=tt*8;
                     let x=r*Math.cos(ang), y=(tt-0.5)*10, z=r*Math.sin(ang);
                     if(noiseAmp > 0) {
-                        x += (Math.random()-0.5)*noiseAmp;
-                        y += (Math.random()-0.5)*noiseAmp;
-                        z += (Math.random()-0.5)*noiseAmp;
+                        x += (Math.random()-0.5)*noiseAmp; y += (Math.random()-0.5)*noiseAmp; z += (Math.random()-0.5)*noiseAmp;
                     }
                     t[i*3]=x; t[i*3+1]=y; t[i*3+2]=z;
                 }
@@ -336,6 +435,15 @@
             }
 
             setShape(name, evo) { this.target.set(this.architect.generateTargets(name, this.count, evo)); }
+
+            sculpt(point) {
+                // Radius = 3.5, Strength = 0.05
+                this.architect.sculpt(this.target, point, 3.5, 0.05);
+            }
+
+            scramble() {
+                this.architect._chaos(this.target, this.count);
+            }
 
             explode() {
                 for(let i=0; i<this.count; i++) {
@@ -386,7 +494,7 @@
             }
         }
 
-        // --- 5. GHOST FIELD (Updated for Warping) ---
+        // --- 5. GHOST FIELD ---
         class GhostField {
             constructor(scene) {
                 this.scene = scene;
@@ -394,12 +502,8 @@
                     color: 0x22aa22, wireframe: true, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending
                 });
             }
-            // We can't easily warp the ghost mesh vertex-by-vertex efficiently in basic ThreeJS
-            // without custom shaders or heavy CPU cost.
-            // COMPROMISE: We pulse the ghost scale to show the "Breathing" life.
             updateShape(name, evo) {
                 if(this.mesh) { this.scene.remove(this.mesh); if(this.mesh.geometry) this.mesh.geometry.dispose(); this.mesh=null; }
-                // Scale base size
                 const s = 1.0;
                 let geo;
                 switch(name) {
@@ -420,11 +524,8 @@
                 if(this.mesh) {
                     this.mesh.rotation.y += 0.002; this.mesh.rotation.z += 0.001;
                     const op = 0.1 + (stability * 0.4);
-
-                    // NEW: Breathing effect on the Ghost itself
                     const breath = 1.0 + Math.sin(time) * 0.05;
                     this.mesh.scale.set(breath, breath, breath);
-
                     if(this.mesh.type==='Group') this.mesh.children.forEach(c=>c.material.opacity=op);
                     else this.material.opacity=op;
                 }
@@ -435,13 +536,18 @@
         class App {
             constructor() {
                 this.params = { resonance: 0.1, vitality: 0.8, evolution: 1.0 };
-                this.currentShape = 'scatter';
-                this.initScene();
+                this.mode = 'classic';
                 this.brain = new MorphicBrain();
                 this.audio = new AudioCore();
+                this.mouse = new THREE.Vector2();
+                this.raycaster = new THREE.Raycaster();
+                this.isDrawing = false;
+
+                this.initScene();
                 this.ghost = new GhostField(this.scene);
                 this.swarm = new Swarm(this.scene, 4000);
                 this.initUI();
+
                 this.animate();
             }
 
@@ -453,9 +559,11 @@
                 this.renderer.setClearColor(0x000500);
                 document.getElementById('canvas-container').appendChild(this.renderer.domElement);
 
-                let isDrag=false, isPan=false, last={x:0,y:0};
+                // CAMERA & INPUT LOGIC
+                let isDrag=false, isRightClick=false, last={x:0,y:0};
                 let theta=0, phi=Math.PI/2, rad=12, target=new THREE.Vector3(0,0,0);
                 const el = document.getElementById('canvas-container');
+
                 const updateCam = () => {
                     const x = rad * Math.sin(phi) * Math.cos(theta);
                     const y = rad * Math.cos(phi);
@@ -464,48 +572,97 @@
                     this.camera.lookAt(target);
                 }
                 updateCam();
-                el.addEventListener('mousedown', e => { isDrag=true; isPan=(e.button===2); last={x:e.clientX, y:e.clientY}; });
-                window.addEventListener('mouseup', () => { isDrag=false; isPan=false; });
+
+                el.addEventListener('mousedown', e => {
+                    isDrag=true;
+                    isRightClick=(e.button===2);
+                    last={x:e.clientX, y:e.clientY};
+
+                    if(this.mode === 'experimental' && !isRightClick) {
+                        this.isDrawing = true;
+                        el.classList.add('cursor-cross');
+                    } else {
+                        el.classList.add('cursor-move');
+                    }
+                });
+
+                window.addEventListener('mouseup', () => {
+                    isDrag=false;
+                    this.isDrawing = false;
+                    el.classList.remove('cursor-move');
+                    el.classList.remove('cursor-cross');
+                });
+
                 window.addEventListener('mousemove', e => {
+                    this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                    this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
                     if(!isDrag) return;
+
                     const dx=e.clientX-last.x, dy=e.clientY-last.y;
                     last={x:e.clientX,y:e.clientY};
-                    if(isPan) {
-                        const r = new THREE.Vector3(1,0,0).applyQuaternion(this.camera.quaternion);
-                        const u = new THREE.Vector3(0,1,0).applyQuaternion(this.camera.quaternion);
-                        target.addScaledVector(r, -dx*0.02); target.addScaledVector(u, dy*0.02);
-                    } else {
+
+                    // Rotate if Classic Mode OR Right Click
+                    const canRotate = (this.mode === 'classic') || (this.mode === 'experimental' && isRightClick);
+
+                    if(canRotate) {
                         theta -= dx*0.005; phi -= dy*0.005;
                         phi = Math.max(0.1, Math.min(Math.PI-0.1, phi));
+                        updateCam();
                     }
-                    updateCam();
                 });
+
                 el.addEventListener('wheel', e => { rad = Math.max(2, Math.min(200, rad + e.deltaY*0.05)); updateCam(); });
                 el.addEventListener('contextmenu', e => e.preventDefault());
                 el.addEventListener('dblclick', () => { this.brain.trauma(); this.swarm.explode(); });
             }
 
             initUI() {
+                // Intro Buttons
+                const start = (mode) => {
+                    this.mode = mode;
+                    document.getElementById('overlay').style.opacity = 0;
+                    setTimeout(()=>document.getElementById('overlay').style.display='none', 1500);
+
+                    document.getElementById('field-status').innerText = (mode === 'classic') ? "SCATTER" : "VOID";
+
+                    if(mode === 'experimental') {
+                        document.getElementById('panel-archetypes').classList.add('hidden');
+                        document.getElementById('panel-experimental').classList.remove('hidden');
+                        document.getElementById('exp-tip').classList.remove('hidden');
+                        if(this.ghost.mesh) this.ghost.mesh.visible = false;
+                    }
+                };
+
+                document.getElementById('btn-classic').addEventListener('click', () => start('classic'));
+                document.getElementById('btn-experimental').addEventListener('click', () => start('experimental'));
+
+                // Info Modal Logic
+                const modal = document.getElementById('info-modal');
+                document.getElementById('open-info').addEventListener('click', () => modal.classList.remove('hidden'));
+                document.getElementById('close-info').addEventListener('click', () => modal.classList.add('hidden'));
+                modal.addEventListener('click', (e) => {
+                    if(e.target === modal) modal.classList.add('hidden');
+                });
+
+                // Existing Sliders
                 const link = (id, key) => {
                     document.getElementById(id).addEventListener('input', e => {
                         this.params[key] = parseFloat(e.target.value);
                         document.getElementById('val-'+id).innerText = this.params[key].toFixed(2);
-
-                        // NEW: Update shape target if evolution changes (for warping)
-                        if(key==='evolution') {
-                            this.swarm.setShape(this.currentShape, this.params.evolution);
-                            this.ghost.updateShape(this.currentShape, this.params.evolution);
-                            // Stress the system (elastic stability)
+                        if(key==='evolution' && this.mode === 'classic') {
+                            this.swarm.setShape(this.currentShape || 'scatter', this.params.evolution);
+                            this.ghost.updateShape(this.currentShape || 'scatter', this.params.evolution);
                             this.brain.stress(0.1);
                         } else {
-                            // Stress the system for other changes too
                             this.brain.stress(0.05);
                         }
                     });
                 };
                 link('resonance', 'resonance'); link('vitality', 'vitality'); link('evolution', 'evolution');
 
-                document.querySelectorAll('.geo-btn').forEach(btn => {
+                // Geometry Buttons (Classic)
+                document.querySelectorAll('.geo-btn[data-shape]').forEach(btn => {
                     btn.addEventListener('click', e => {
                         this.currentShape = e.target.dataset.shape;
                         this.swarm.setShape(this.currentShape, this.params.evolution);
@@ -517,10 +674,17 @@
                     });
                 });
 
-                document.getElementById('ignite-btn').addEventListener('click', () => {
-                    document.getElementById('overlay').style.opacity = 0;
-                    setTimeout(()=>document.getElementById('overlay').style.display='none', 1500);
+                // Experimental Buttons
+                document.getElementById('exp-reset').addEventListener('click', () => {
+                    this.swarm.target.fill(0);
+                    this.brain.trauma();
                 });
+                document.getElementById('exp-scramble').addEventListener('click', () => {
+                    this.swarm.scramble();
+                    this.brain.trauma();
+                });
+
+                // Global Buttons
                 document.getElementById('audio-toggle').addEventListener('click', (e) => {
                     const isOn = this.audio.toggle();
                     e.target.innerText = isOn ? "AUDIO ACTIVE" : "AUDIO MUTED";
@@ -532,9 +696,25 @@
             animate() {
                 requestAnimationFrame(this.animate.bind(this));
                 const time = performance.now() * 0.001;
+
+                // Handle Sculpting
+                if (this.mode === 'experimental' && this.isDrawing) {
+                    this.raycaster.setFromCamera(this.mouse, this.camera);
+                    const planeNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(this.camera.quaternion);
+                    const plane = new THREE.Plane(planeNormal, 0);
+                    const intersectPoint = new THREE.Vector3();
+
+                    this.raycaster.ray.intersectPlane(plane, intersectPoint);
+
+                    if (intersectPoint) {
+                        this.swarm.sculpt(intersectPoint);
+                    }
+                    this.brain.stress(0.01);
+                }
+
                 const stability = this.brain.update(time, this.params.resonance, this.params.vitality);
                 this.swarm.update(time, this.params.resonance, this.params.vitality, stability);
-                this.ghost.animate(stability, time);
+                if(this.mode === 'classic') this.ghost.animate(stability, time);
                 this.audio.update(stability, this.params.vitality);
                 this.renderer.render(this.scene, this.camera);
             }
