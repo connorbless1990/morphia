@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MORPHIA: A morphic field visualizer</title>
+    <title>MORPHIA: Dualistic Field</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,7 +13,7 @@
         /* CORE SETUP */
         body { margin: 0; overflow: hidden; background-color: #000200; color: #aaffaa; font-family: 'Courier New', monospace; user-select: none; -webkit-tap-highlight-color: transparent; }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        
+
         /* CURSORS */
         .cursor-cross { cursor: crosshair; }
         .cursor-move { cursor: move; }
@@ -60,7 +60,7 @@
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 2px; background: rgba(74, 222, 128, 0.2); }
 
         /* BUTTONS */
-        .geo-btn { transition: all 0.2s; text-transform: uppercase; letter-spacing: 2px; font-size: 10px; }
+        .geo-btn { transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px; font-size: 9px; }
         .geo-btn:hover { background: #4ade80; color: black; box-shadow: 0 0 15px rgba(74, 222, 128, 0.4); }
         .geo-btn.active { background: #4ade80; color: black; box-shadow: 0 0 20px rgba(74, 222, 128, 0.6); font-weight: bold; }
 
@@ -91,14 +91,14 @@
     <!-- INTRO OVERLAY -->
     <div id="overlay">
         <h1 class="text-4xl md:text-6xl text-green-500 font-bold mb-8 tracking-widest text-center" style="text-shadow: 0 0 20px rgba(74, 222, 128, 0.5);">MORPHIA</h1>
-        
+
         <div class="flex gap-8 items-stretch flex-wrap justify-center">
             <!-- PATH 1: CLASSIC -->
             <div id="btn-classic" class="mode-card flex flex-col items-center w-64 group">
                 <div class="text-2xl text-green-400 mb-2 font-bold tracking-widest group-hover:text-white">PLATONIC</div>
                 <div class="h-px w-full bg-green-900 mb-4 group-hover:bg-green-500"></div>
                 <p class="text-[10px] text-gray-400 text-center leading-relaxed">
-                    Observe predetermined sacred geometries. 
+                    Observe the predetermined sacred geometries.
                     <br><br>
                 </p>
                 <div class="mt-8 text-xs border border-green-800 px-4 py-2 text-green-600 group-hover:bg-green-500 group-hover:text-black transition-colors">INITIATE</div>
@@ -109,7 +109,7 @@
                 <div class="text-2xl text-yellow-400 mb-2 font-bold tracking-widest group-hover:text-white">QUANTUM</div>
                 <div class="h-px w-full bg-yellow-900 mb-4 group-hover:bg-yellow-500"></div>
                 <p class="text-[10px] text-gray-400 text-center leading-relaxed">
-                    Use the cursor to warp the gravity well.
+                    Seize the cursor and warp the gravity well.
                     <br><br>
                 </p>
                 <div class="mt-8 text-xs border border-yellow-800 px-4 py-2 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-black transition-colors">IGNITE</div>
@@ -150,16 +150,16 @@
 
     <!-- UI HUD -->
     <div class="absolute top-0 left-0 w-full h-full pointer-events-none p-4 flex flex-col justify-between z-10">
-        
+
         <!-- HEADER: Status & Info -->
         <div class="flex justify-between items-start w-full pointer-events-auto">
             <!-- STATUS PANEL -->
             <div id="panel-status" class="glass-panel p-4 inline-block min-w-[160px] md:min-w-[200px] group">
                 <div class="flex justify-between items-center cursor-pointer" onclick="togglePanel('panel-status')">
-                    <div class="text-[10px] text-green-500 font-bold opacity-60 tracking-widest">FIELD</div>
+                    <div class="text-[10px] text-green-500 font-bold opacity-60 tracking-widest">FIELD STATUS</div>
                     <div class="toggle-icon text-green-500 text-[10px]">▼</div>
                 </div>
-                
+
                 <div class="panel-content mt-2">
                     <div class="text-2xl md:text-3xl font-bold tracking-tighter text-green-400" id="field-status" style="text-shadow: 0 0 10px rgba(51,255,51,0.3);">WAITING</div>
                     <div class="flex flex-col mt-4 border-t border-green-900/30 pt-3 gap-2">
@@ -189,12 +189,14 @@
             </div>
 
             <div class="panel-content space-y-6">
-                <!-- SHAPES (Classic) -->
+                <!-- SHAPES (Updated Layout) -->
                 <div id="panel-archetypes">
-                    <div class="grid grid-cols-3 gap-2">
+                    <div class="grid grid-cols-4 gap-2">
                         <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="sphere">SPHERE</button>
                         <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="torus">TORUS</button>
                         <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="merkaba">MERKABA</button>
+                        <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="dodeca">DODECA</button>
+                        <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="icosa">ICOSA</button>
                         <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="spiral">SPIRAL</button>
                         <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="flower">FLOWER</button>
                         <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="scatter">VOID</button>
@@ -257,73 +259,58 @@
             el.classList.toggle('minimized');
         }
 
-        // --- HELPER: Create a soft glow texture on the fly ---
         function createGlowTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 32; canvas.height = 32;
             const ctx = canvas.getContext('2d');
             const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-            grad.addColorStop(0, 'rgba(255, 255, 255, 1)'); // Center white
-            grad.addColorStop(0.4, 'rgba(255, 255, 255, 0.3)'); // Mid glow
-            grad.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Edge transparent
+            grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            grad.addColorStop(0.4, 'rgba(255, 255, 255, 0.3)');
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, 32, 32);
-            const tex = new THREE.CanvasTexture(canvas);
-            return tex;
+            return new THREE.CanvasTexture(canvas);
         }
 
-        // --- 1. AUDIO SYSTEM (iOS Hardened with Warm-Up Hack) ---
+        // --- 0. HTML5 AUDIO BRIDGE (THE MUTE SWITCH BYPASS) ---
+        class SilentAudioBridge {
+            constructor() {
+                this.audio = document.createElement('audio');
+                this.audio.src = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTSVMAAAAPAAADTGF2ZjU4LjIwLjEwMAAAAAAAAAAAAAAA//oeAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//////////////////////////////////wAAADFMYXZjNTguMzUAAAAAAAAAAAAAAAAAAAAAAAC0AAAAAAAAAAAB//oeRn+ABAAAAAARAAAAAAKAAAAAAAAAAAAAA//oeRn+ABAAAAAARAAAAAAKAAAAAAAAAAAAAA//oeRn+ABAAAAAARAAAAAAKAAAAAAAAAAAAAA//oeRn+ABAAAAAARAAAAAAKAAAAAAAAAAAAAA//oeRn+ABAAAAAARAAAAAAKAAAAAAAAAAAAAA";
+                this.audio.loop = true;
+                this.audio.volume = 0.01;
+                document.body.appendChild(this.audio);
+            }
+            play() { this.audio.play().catch(e => console.log("Silent bridge failed:", e)); }
+        }
+
+        // --- 1. AUDIO SYSTEM ---
         class AudioCore {
             constructor() {
-                this.ctx = null;
-                this.master = null;
-                this.isInit = false;
-                this.isEnabled = false;
-                this.bells = [];
+                this.ctx = null; this.master = null; this.isInit = false; this.isEnabled = false; this.bridge = new SilentAudioBridge();
             }
-
-            // Phase 1: Unlock on user Interaction (Initiate Button)
             unlock() {
                 if(this.isInit) return;
-                
+                this.bridge.play();
                 const AC = window.AudioContext || window.webkitAudioContext;
                 this.ctx = new AC();
                 this.master = this.ctx.createGain();
-                this.master.gain.value = 0.0; // Start MUTED but RUNNING
+                this.master.gain.value = 0.0;
                 this.master.connect(this.ctx.destination);
-
-                // --- IOS WAKE UP HACK ---
-                // Play a silent buffer instantly to force the hardware to wake up
                 const empty = this.ctx.createBuffer(1, 1, 22050);
                 const src = this.ctx.createBufferSource();
-                src.buffer = empty;
-                src.connect(this.ctx.destination);
-                src.start(0);
-                
-                // Create the infinite loops
+                src.buffer = empty; src.connect(this.ctx.destination); src.start(0);
                 this.setupLoops();
-                
-                // Hard resume
-                if(this.ctx.state === 'suspended') {
-                    this.ctx.resume();
-                }
-
-                this.isInit = true;
-                this.isEnabled = true; // Auto-enable on click
-                
-                // Fade in automatically
+                if(this.ctx.state === 'suspended') { this.ctx.resume(); }
+                this.isInit = true; this.isEnabled = true;
                 const t = this.ctx.currentTime;
-                this.master.gain.setTargetAtTime(0.3, t, 1.0); // 2 second fade in
-                
-                console.log("Audio Unlocked, Warmed Up, and Fading In");
+                this.master.gain.setTargetAtTime(0.3, t, 1.0);
             }
-
             setupLoops() {
-                // 1. PRIMORDIAL NOISE
                 const bufferSize = 2 * this.ctx.sampleRate;
                 const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
                 const output = noiseBuffer.getChannelData(0);
-                let lastOut = 0; 
+                let lastOut = 0;
                 for (let i = 0; i < bufferSize; i++) {
                     const white = Math.random() * 2 - 1;
                     output[i] = (lastOut + (0.02 * white)) / 1.02;
@@ -339,10 +326,9 @@
                 this.noiseGain.connect(this.master);
                 this.noiseNode.start();
 
-                // 2. ISOSTATIC DRONE
                 this.droneOsc = this.ctx.createOscillator();
                 this.droneOsc.type = 'sine';
-                this.droneOsc.frequency.value = 55.0; 
+                this.droneOsc.frequency.value = 55.0;
                 this.droneGain = this.ctx.createGain();
                 this.droneGain.gain.value = 0.0;
                 this.lfo = this.ctx.createOscillator();
@@ -356,81 +342,44 @@
                 this.droneOsc.start();
                 this.lfo.start();
             }
-
-            // Phase 2: User Toggles Volume (Mute/Unmute now)
             toggle() {
                 if(!this.ctx) return false;
                 if(this.ctx.state === 'suspended') this.ctx.resume();
-
                 this.isEnabled = !this.isEnabled;
                 const t = this.ctx.currentTime;
-                
-                if(this.isEnabled) {
-                    this.master.gain.setTargetAtTime(0.3, t, 0.1);
-                    return true;
-                } else {
-                    this.master.gain.setTargetAtTime(0, t, 0.1);
-                    return false;
-                }
+                if(this.isEnabled) { this.master.gain.setTargetAtTime(0.3, t, 0.1); return true; }
+                else { this.master.gain.setTargetAtTime(0, t, 0.1); return false; }
             }
-
             triggerBell(stability) {
                 if(!this.isInit || !this.isEnabled) return;
-
                 const t = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const mod = this.ctx.createOscillator();
-                const masterGain = this.ctx.createGain();
-                const modGain = this.ctx.createGain();
-
+                const osc = this.ctx.createOscillator(); const mod = this.ctx.createOscillator();
+                const masterGain = this.ctx.createGain(); const modGain = this.ctx.createGain();
                 const freqs = [110, 164.8, 196, 220, 293.6];
                 const freq = freqs[Math.floor(Math.random() * freqs.length)] * (Math.random() > 0.5 ? 0.5 : 1);
-
-                osc.frequency.value = freq;
-                mod.frequency.value = freq * 1.5;
-
+                osc.frequency.value = freq; mod.frequency.value = freq * 1.5;
                 masterGain.gain.setValueAtTime(0, t);
-                masterGain.gain.linearRampToValueAtTime(0.1 + (stability*0.1), t + 0.1); 
-                masterGain.gain.exponentialRampToValueAtTime(0.001, t + 4.0 + (stability*4)); 
-
-                modGain.gain.setValueAtTime(100, t);
-                modGain.gain.exponentialRampToValueAtTime(1, t + 2);
-
-                mod.connect(modGain);
-                modGain.connect(osc.frequency);
-                osc.connect(masterGain);
-                masterGain.connect(this.master);
-
-                osc.start(t);
-                mod.start(t);
-                osc.stop(t + 8);
-                mod.stop(t + 8);
+                masterGain.gain.linearRampToValueAtTime(0.1 + (stability*0.1), t + 0.1);
+                masterGain.gain.exponentialRampToValueAtTime(0.001, t + 4.0 + (stability*4));
+                modGain.gain.setValueAtTime(100, t); modGain.gain.exponentialRampToValueAtTime(1, t + 2);
+                mod.connect(modGain); modGain.connect(osc.frequency);
+                osc.connect(masterGain); masterGain.connect(this.master);
+                osc.start(t); mod.start(t); osc.stop(t + 8); mod.stop(t + 8);
             }
-
             update(stability, vitality, breath) {
                 if(!this.isInit) return;
                 const targetDrone = 0.1 + (stability * 0.2);
                 this.droneGain.gain.setTargetAtTime(targetDrone * breath, this.ctx.currentTime, 0.5);
-
-                if (Math.random() < 0.005 + (vitality * 0.01)) {
-                    this.triggerBell(stability);
-                }
+                if (Math.random() < 0.005 + (vitality * 0.01)) { this.triggerBell(stability); }
             }
         }
 
         // --- 2. MORPHIC BRAIN ---
         class MorphicBrain {
-            constructor() {
-                this.stability = 0;
-                this.startTime = 0;
-            }
+            constructor() { this.stability = 0; this.startTime = 0; }
             reset() { this.stability = 0; this.startTime = performance.now() * 0.001; }
             trauma() { this.stability = 0; this.startTime = performance.now() * 0.001; }
-            stress(amount) {
-                this.stability = Math.max(0, this.stability - amount);
-                const time = performance.now() * 0.001;
-                this.startTime = time - (this.stability * 60);
-            }
+            stress(amount) { this.stability = Math.max(0, this.stability - amount); this.startTime = performance.now() * 0.001 - (this.stability * 60); }
             update(time, resonance, vitality) {
                 if (vitality > resonance + 0.1) {
                     this.stability = Math.max(0, this.stability - 0.005);
@@ -445,32 +394,27 @@
                 if(this.stability > 1.0) {
                     document.getElementById('stability-bar').style.backgroundColor = '#ffffff';
                     document.getElementById('stability-bar').style.boxShadow = `0 0 ${10 + (this.stability*5)}px #ffffff`;
-                } else {
-                    document.getElementById('stability-bar').style.backgroundColor = '#4ade80';
-                }
+                } else { document.getElementById('stability-bar').style.backgroundColor = '#4ade80'; }
                 return this.stability;
             }
         }
 
-        // --- 3. ARCHITECT (Volumetric) ---
+        // --- 3. ARCHITECT (ENHANCED: Volumetric & Surface Sampling) ---
+        // --- 3. ARCHITECT (REVISED: Skeleton + Skin Distribution) ---
         class Architect {
             sculpt(targets, point, radius, strength) {
                 const count = targets.length / 3;
                 const rSq = radius * radius;
                 for(let i=0; i<count; i++) {
                     const ix=i*3, iy=i*3+1, iz=i*3+2;
-                    const dx = targets[ix] - point.x;
-                    const dy = targets[iy] - point.y;
-                    const dz = targets[iz] - point.z;
+                    const dx = targets[ix] - point.x; const dy = targets[iy] - point.y; const dz = targets[iz] - point.z;
                     const distSq = dx*dx + dy*dy + dz*dz;
                     if (distSq < rSq) {
                         const force = strength * (1 - (distSq/rSq));
-                        const jitterX = (Math.random() - 0.5) * 2.0;
-                        const jitterY = (Math.random() - 0.5) * 2.0;
-                        const jitterZ = (Math.random() - 0.5) * 2.0;
-                        targets[ix] -= (dx - jitterX) * force;
-                        targets[iy] -= (dy - jitterY) * force;
-                        targets[iz] -= (dz - jitterZ) * force;
+                        const jitter = (Math.random()-0.5)*2;
+                        targets[ix] -= (dx - jitter) * force;
+                        targets[iy] -= (dy - jitter) * force;
+                        targets[iz] -= (dz - jitter) * force;
                     }
                 }
             }
@@ -479,126 +423,195 @@
                 const targets = new Float32Array(count * 3);
                 let geo;
                 const scale = 1.0;
-                switch(shapeName) {
-                    case 'torus': geo = new THREE.TorusKnotGeometry(2.5 * scale, 0.6, 150, 20); break;
-                    case 'merkaba': return this._generateMerkaba(targets, count, scale, evolution);
-                    case 'flower': return this._generateFlower(targets, count, scale, evolution);
-                    case 'sphere': geo = new THREE.SphereGeometry(3.0 * scale, 64, 64); break;
-                    case 'spiral': this._spiral(targets, count, evolution); return targets;
-                    case 'scatter': default: this._chaos(targets, count); return targets;
-                }
-                if(geo) {
-                    const pos = geo.attributes.position;
-                    const noiseAmp = (evolution - 1.0) * 0.8;
-                    const noiseFreq = 0.5;
-                    for(let i=0; i<count; i++) {
-                        const index = Math.floor(rand(0, pos.count));
-                        let px = pos.getX(index);
-                        let py = pos.getY(index);
-                        let pz = pos.getZ(index);
+
+                // HELPER: Weighted Sampling (30% Edges, 70% Faces)
+                const sampleGeometry = (geometry) => {
+                    const pos = geometry.attributes.position;
+                    const faceCount = pos.count / 3;
+
+                    for (let i = 0; i < count; i++) {
+                        // 1. Pick a random face
+                        const fIdx = Math.floor(Math.random() * faceCount);
+                        const ax = pos.getX(fIdx*3), ay = pos.getY(fIdx*3), az = pos.getZ(fIdx*3);
+                        const bx = pos.getX(fIdx*3+1), by = pos.getY(fIdx*3+1), bz = pos.getZ(fIdx*3+1);
+                        const cx = pos.getX(fIdx*3+2), cy = pos.getY(fIdx*3+2), cz = pos.getZ(fIdx*3+2);
+
+                        let px, py, pz;
+
+                        // DIALECTIC BIAS: 30% of particles stick to edges to define the "Wireframe"
+                        if (Math.random() < 0.3) {
+                            const t = Math.random();
+                            // Pick a random edge on this face (AB, BC, or CA)
+                            const edge = Math.random();
+                            if(edge < 0.33) {
+                                px=ax+t*(bx-ax); py=ay+t*(by-ay); pz=az+t*(bz-az);
+                            } else if(edge < 0.66) {
+                                px=bx+t*(cx-bx); py=by+t*(cy-by); pz=bz+t*(cz-bz);
+                            } else {
+                                px=cx+t*(ax-cx); py=cy+t*(ay-cy); pz=cz+t*(az-cz);
+                            }
+                        } else {
+                            // 70% fill the volume (Barycentric)
+                            let r1 = Math.random(), r2 = Math.random();
+                            if (r1 + r2 > 1) { r1 = 1 - r1; r2 = 1 - r2; }
+                            px = ax + r1 * (bx - ax) + r2 * (cx - ax);
+                            py = ay + r1 * (by - ay) + r2 * (cy - ay);
+                            pz = az + r1 * (bz - az) + r2 * (cz - az);
+                        }
+
+                        // Evolution Warp
                         if(evolution > 1.0) {
-                            const len = Math.sqrt(px*px + py*py + pz*pz) || 1;
-                            const nx = px/len, ny = py/len, nz = pz/len;
-                            const n = simplex.noise3D(nx*noiseFreq, ny*noiseFreq, nz*noiseFreq + (evolution*0.1));
-                            const disp = 1 + (n * noiseAmp);
+                            const n = simplex.noise3D(px*0.5, py*0.5, pz*0.5 + (evolution*0.2));
+                            const disp = 1 + (n * (evolution - 1.0) * 0.8);
                             px *= disp; py *= disp; pz *= disp;
                         }
                         targets[i*3] = px; targets[i*3+1] = py; targets[i*3+2] = pz;
                     }
+                };
+
+                switch(shapeName) {
+                    case 'torus': geo = new THREE.TorusKnotGeometry(2.5 * scale, 0.6, 150, 20); break;
+                    case 'sphere': geo = new THREE.SphereGeometry(3.0 * scale, 64, 64); break;
+
+                    // KEY FIX: Detail = 0 preserves the sharp "Platonic" angles
+                    case 'dodeca': geo = new THREE.DodecahedronGeometry(3.5*scale, 0); break;
+                    case 'icosa': geo = new THREE.IcosahedronGeometry(3.5*scale, 0); break;
+
+                    case 'merkaba': return this._generateMerkaba(targets, count, scale, evolution);
+                    case 'flower': return this._generateFlower(targets, count, scale, evolution);
+                    case 'spiral': this._spiral(targets, count, evolution); return targets;
+                    default: this._chaos(targets, count); return targets;
+                }
+
+                if(geo) {
+                    sampleGeometry(geo);
                     geo.dispose();
                 }
                 return targets;
             }
 
             _generateMerkaba(t, c, s, evo) {
-                const g1 = new THREE.TetrahedronGeometry(4*s,0), g2 = new THREE.TetrahedronGeometry(4*s,0);
+                // Same logic: Low poly tetrahedrons, but sampled on surfaces
+                const g1 = new THREE.TetrahedronGeometry(4*s, 0).toNonIndexed();
+                const g2 = new THREE.TetrahedronGeometry(4*s, 0).toNonIndexed();
                 g2.rotateX(Math.PI/2); g2.rotateZ(Math.PI/4);
-                const p1=g1.attributes.position, p2=g2.attributes.position;
-                const noiseAmp = (evo - 1.0) * 0.5;
-                for(let i=0; i<c; i++) {
-                    const g = Math.random()>0.5?p1:p2;
-                    const idx = Math.floor(rand(0,g.count));
-                    let x=g.getX(idx), y=g.getY(idx), z=g.getZ(idx);
-                    if(evo > 1.0) {
-                        const n = simplex.noise3D(x*0.2, y*0.2, z*0.2);
-                        const disp = 1 + (n * noiseAmp);
-                        x*=disp; y*=disp; z*=disp;
+
+                // We manually sample these using the same edge/face logic
+                // (Simplified for brevity, but applies the same bias)
+                const sample = (pos, offset, limit) => {
+                    const faces = pos.count/3;
+                    for(let i=offset; i<limit; i++) {
+                        const f = Math.floor(Math.random()*faces);
+                        const ax=pos.getX(f*3), ay=pos.getY(f*3), az=pos.getZ(f*3);
+                        const bx=pos.getX(f*3+1), by=pos.getY(f*3+1), bz=pos.getZ(f*3+1);
+                        const cx=pos.getX(f*3+2), cy=pos.getY(f*3+2), cz=pos.getZ(f*3+2);
+
+                        let px, py, pz;
+                        if(Math.random() < 0.3) { // Edge bias
+                            const r = Math.random();
+                            px=ax+r*(bx-ax); py=ay+r*(by-ay); pz=az+r*(bz-az); // Sample just one edge for speed
+                        } else {
+                            let r1=Math.random(), r2=Math.random();
+                            if(r1+r2>1){r1=1-r1;r2=1-r2;}
+                            px=ax+r1*(bx-ax)+r2*(cx-ax); py=ay+r1*(by-ay)+r2*(cy-ay); pz=az+r1*(bz-az)+r2*(cz-az);
+                        }
+                        if(evo > 1.0) {
+                            const disp = 1 + (simplex.noise3D(px*0.2,py*0.2,pz*0.2)*(evo-1.0)*0.5);
+                            px*=disp; py*=disp; pz*=disp;
+                        }
+                        t[i*3]=px; t[i*3+1]=py; t[i*3+2]=pz;
                     }
-                    t[i*3]=x; t[i*3+1]=y; t[i*3+2]=z;
-                }
-                g1.dispose(); g2.dispose(); return t;
+                };
+                sample(g1.attributes.position, 0, c/2);
+                sample(g2.attributes.position, c/2, c);
+                g1.dispose(); g2.dispose();
+                return t;
             }
 
+            // Keep Flower/Spiral/Chaos from previous valid versions...
             _generateFlower(t, c, s, evo) {
-                const g = new THREE.SphereGeometry(1.2*s,16,16); const pos=g.attributes.position;
-                const ctrs = [{x:0,y:0,z:0},{x:2,y:0,z:0},{x:-2,y:0,z:0},{x:1,y:1.73,z:0},{x:-1,y:1.73,z:0},{x:1,y:-1.73,z:0},{x:-1,y:-1.73,z:0}];
+                const g = new THREE.SphereGeometry(1.2*s,16,16);
+                const pos = g.attributes.position;
+                // The 7 overlapping spheres pattern
+                const ctrs = [
+                    {x:0,y:0,z:0},
+                    {x:2,y:0,z:0}, {x:-2,y:0,z:0},
+                    {x:1,y:1.73,z:0}, {x:-1,y:1.73,z:0},
+                    {x:1,y:-1.73,z:0}, {x:-1,y:-1.73,z:0}
+                ];
                 const noiseAmp = (evo - 1.0) * 0.3;
+
                 for(let i=0; i<c; i++) {
                     const ct = ctrs[Math.floor(Math.random()*ctrs.length)];
-                    const idx = Math.floor(rand(0,pos.count));
+                    const idx = Math.floor(Math.random() * pos.count);
                     let lx = pos.getX(idx), ly = pos.getY(idx), lz = pos.getZ(idx);
+
                     if(evo > 1.0) {
                         const n = simplex.noise3D(lx+ct.x, ly+ct.y, lz+ct.z);
                         const disp = 1 + (n * noiseAmp);
                         lx*=disp; ly*=disp; lz*=disp;
                     }
-                    t[i*3]=lx+ct.x*s; t[i*3+1]=ly+ct.y*s; t[i*3+2]=lz+ct.z*s;
+                    // Scale and Offset
+                    t[i*3]=lx*s + ct.x*s;
+                    t[i*3+1]=ly*s + ct.y*s;
+                    t[i*3+2]=lz*s + ct.z*s;
                 }
-                g.dispose(); return t;
+                g.dispose();
+                return t;
             }
 
+            // RESTORED: Primordial Chaos (The Void)
             _chaos(t, c) {
                 for(let i=0; i<c; i++) {
-                    const r = 15 * Math.cbrt(Math.random());
-                    const th = rand(0, Math.PI*2), ph = Math.acos(rand(-1, 1));
-                    t[i*3]=r*Math.sin(ph)*Math.cos(th); t[i*3+1]=r*Math.sin(ph)*Math.sin(th); t[i*3+2]=r*Math.cos(ph);
+                    // A wide cubic spread to fill the screen corners
+                    // Range +/- 30 creates a feeling of infinite space
+                    t[i*3] = (Math.random() - 0.5) * 60.0;
+                    t[i*3+1] = (Math.random() - 0.5) * 60.0;
+                    t[i*3+2] = (Math.random() - 0.5) * 60.0;
                 }
             }
-
             _spiral(t, c, evo) {
                 const tw = evo*0.8;
                 const noiseAmp = Math.max(0, evo-1.0);
                 for(let i=0; i<c; i++) {
                     const tt = i/c, ang = tt*Math.PI*20*tw, r=tt*8;
                     let x=r*Math.cos(ang), y=(tt-0.5)*10, z=r*Math.sin(ang);
+                    // BIAS: Add slight random scatter to thickening the spiral line
+                    x += (Math.random()-0.5)*0.5;
+                    y += (Math.random()-0.5)*0.5;
+                    z += (Math.random()-0.5)*0.5;
+
                     if(noiseAmp > 0) {
-                        x += (Math.random()-0.5)*noiseAmp; y += (Math.random()-0.5)*noiseAmp; z += (Math.random()-0.5)*noiseAmp;
+                        const n = simplex.noise3D(x*0.1, y*0.1, z*0.1);
+                        x += n*noiseAmp; y += n*noiseAmp; z += n*noiseAmp;
                     }
                     t[i*3]=x; t[i*3+1]=y; t[i*3+2]=z;
                 }
             }
         }
 
-        // --- 4. SWARM (Cosmic Dust + Glow) ---
+        // --- 4. SWARM ---
         class Swarm {
             constructor(scene, count) {
                 this.count = count; this.scene = scene; this.architect = new Architect();
-                this.pos = new Float32Array(count*3);
-                this.vel = new Float32Array(count*3);
-                this.target = new Float32Array(count*3);
-                this.architect._chaos(this.pos, count);
-                this.architect._chaos(this.target, count);
-
+                this.pos = new Float32Array(count*3); this.vel = new Float32Array(count*3); this.target = new Float32Array(count*3);
+                this.architect._chaos(this.pos, count); this.architect._chaos(this.target, count);
                 const tex = createGlowTexture();
                 const geo = new THREE.PlaneGeometry(0.3, 0.3);
                 const mat = new THREE.MeshBasicMaterial({
                     map: tex, color: 0xffffff, transparent: true, opacity: 0.8,
                     depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide
                 });
-
                 this.mesh = new THREE.InstancedMesh(geo, mat, count);
                 this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
                 this.mesh.frustumCulled = false;
                 scene.add(this.mesh);
-
                 this.dummy = new THREE.Object3D();
                 this.color = new THREE.Color();
             }
-
             setShape(name, evo) { this.target.set(this.architect.generateTargets(name, this.count, evo)); }
             sculpt(point) { this.architect.sculpt(this.target, point, 3.5, 0.05); }
             scramble() { this.architect._chaos(this.target, this.count); }
-
             explode() {
                 for(let i=0; i<this.count; i++) {
                     const ix=i*3, iy=i*3+1, iz=i*3+2;
@@ -607,53 +620,40 @@
                     this.vel[iz] += (Math.random()-0.5) * 5.0;
                 }
             }
-
             update(time, resonance, vitality, stability) {
-                const dt = 0.016;
-                const breath = Math.sin(time*0.5)*0.1 + 1.0; 
+                const dt = 0.016; const breath = Math.sin(time*0.5)*0.1 + 1.0;
                 const physStability = Math.min(stability, 1.0);
                 const effectiveResonance = resonance * (1.0 + stability);
-
-                // Cosmic Color Palette: Red/Orange (Chaos) -> Cyan/Gold (Order)
-                const colorChaos = new THREE.Color(0xff2200);
-                const colorOrder = new THREE.Color(0x00ffff);
+                const colorChaos = new THREE.Color(0xff2200); const colorOrder = new THREE.Color(0x00ffff);
                 const currentColor = new THREE.Color().lerpColors(colorChaos, colorOrder, physStability);
-
                 for(let i=0; i<this.count; i++) {
                     const ix=i*3, iy=i*3+1, iz=i*3+2;
                     let fx = (this.target[ix]-this.pos[ix])*effectiveResonance*5.0;
                     let fy = (this.target[iy]-this.pos[iy])*effectiveResonance*5.0;
                     let fz = (this.target[iz]-this.pos[iz])*effectiveResonance*5.0;
-
                     const ns = 0.5;
                     fx += Math.sin(this.pos[iy]*ns+time)*vitality*breath;
                     fy += Math.cos(this.pos[iz]*ns+time)*vitality*breath;
                     fz += Math.sin(this.pos[ix]*ns+time)*vitality*breath;
-
                     this.vel[ix]+=fx*dt; this.vel[iy]+=fy*dt; this.vel[iz]+=fz*dt;
                     const baseFric = 0.98 - (resonance*0.1);
                     const fric = Math.max(0.85, baseFric - (physStability*0.05));
                     this.vel[ix]*=fric; this.vel[iy]*=fric; this.vel[iz]*=fric;
                     this.pos[ix]+=this.vel[ix]; this.pos[iy]+=this.vel[iy]; this.pos[iz]+=this.vel[iz];
-
                     this.dummy.position.set(this.pos[ix],this.pos[iy],this.pos[iz]);
                     this.dummy.lookAt(this.cameraPosition || new THREE.Vector3(0,0,10));
-
                     const s = (0.5 + (stability*0.5)) * breath;
                     this.dummy.scale.set(s, s, s);
                     this.dummy.updateMatrix();
-
                     this.mesh.setMatrixAt(i, this.dummy.matrix);
                     this.mesh.setColorAt(i, currentColor);
                 }
-                this.mesh.instanceMatrix.needsUpdate = true;
-                this.mesh.instanceColor.needsUpdate = true;
+                this.mesh.instanceMatrix.needsUpdate = true; this.mesh.instanceColor.needsUpdate = true;
             }
-
             setCameraPos(pos) { this.cameraPosition = pos; }
         }
 
-        // --- 5. GHOST FIELD (Void Blueprint) ---
+        // --- 5. GHOST FIELD (Fixed Consistency) ---
         class GhostField {
             constructor(scene) {
                 this.scene = scene;
@@ -662,27 +662,72 @@
                     blending: THREE.AdditiveBlending, depthWrite: false
                 });
             }
+
             updateShape(name, evo) {
-                if(this.mesh) { this.scene.remove(this.mesh); if(this.mesh.geometry) this.mesh.geometry.dispose(); this.mesh=null; }
+                if(this.mesh) {
+                    this.scene.remove(this.mesh);
+                    if(this.mesh.geometry) this.mesh.geometry.dispose();
+                    this.mesh=null;
+                }
                 const s = 1.0;
-                let geo;
+                let geo, mat = this.material;
+
                 switch(name) {
                     case 'torus': geo = new THREE.TorusKnotGeometry(2.5*s, 0.6, 120, 20); break;
                     case 'sphere': geo = new THREE.SphereGeometry(3.0*s, 32, 32); break;
+                    case 'dodeca': geo = new THREE.DodecahedronGeometry(3.5*s, 0); break;
+                    case 'icosa': geo = new THREE.IcosahedronGeometry(3.5*s, 0); break;
+
+                    // FIX: High-Res Line instead of Tube
+                    case 'spiral':
+                        const pts = [];
+                        // 500 points for silky smoothness
+                        for(let i=0; i<500; i++) {
+                            const t = i/500;
+                            const ang = t*Math.PI*20*0.8;
+                            const r = t*8;
+                            pts.push(new THREE.Vector3(r*Math.cos(ang), (t-0.5)*10, r*Math.sin(ang)));
+                        }
+                        geo = new THREE.BufferGeometry().setFromPoints(pts);
+                        // We need a LINE material, not a MESH material
+                        this.mesh = new THREE.Line(geo, new THREE.LineBasicMaterial({
+                            color: 0x44ffaa,
+                            transparent: true,
+                            opacity: 0.15, // Reduced opacity as requested
+                            blending: THREE.AdditiveBlending
+                        }));
+                        this.scene.add(this.mesh);
+                        return; // Exit early since we manually added the mesh
+
+                    case 'flower': geo = new THREE.IcosahedronGeometry(3.0*s, 1); break;
                     case 'merkaba':
                         this.mesh = new THREE.Group();
                         const m1 = new THREE.Mesh(new THREE.TetrahedronGeometry(4*s,0), this.material);
                         const m2 = new THREE.Mesh(new THREE.TetrahedronGeometry(4*s,0), this.material);
                         m2.rotateX(Math.PI/2); m2.rotateZ(Math.PI/4);
-                        this.mesh.add(m1); this.mesh.add(m2);
-                        this.scene.add(this.mesh); return;
-                    default: return;
+                        // Reduced core opacity to be less jarring
+                        const coreMat = this.material.clone();
+                        coreMat.opacity = 0.05;
+                        const core = new THREE.Mesh(new THREE.SphereGeometry(1.5*s, 16, 16), coreMat);
+                        this.mesh.add(m1); this.mesh.add(m2); this.mesh.add(core);
+                        this.scene.add(this.mesh);
+                        return;
                 }
-                if(geo) { this.mesh = new THREE.Mesh(geo, this.material); this.scene.add(this.mesh); }
+
+                if(geo) {
+                    this.mesh = new THREE.Mesh(geo, this.material);
+                    this.scene.add(this.mesh);
+                }
             }
+
             animate(stability, time) {
                 if(this.mesh) {
                     this.mesh.rotation.y += 0.002;
+                    // Gyroscope Effect
+                    if(this.mesh.type === 'Group') {
+                        this.mesh.children[0].rotation.z -= 0.001;
+                        this.mesh.children[1].rotation.z += 0.001;
+                    }
                     const op = 0.02 + (stability * 0.08);
                     const breath = 1.0 + Math.sin(time*0.5) * 0.05;
                     this.mesh.scale.set(breath, breath, breath);
@@ -702,17 +747,16 @@
                 this.mouse = new THREE.Vector2();
                 this.raycaster = new THREE.Raycaster();
                 this.isDrawing = false;
-                
+
                 this.initScene();
                 this.ghost = new GhostField(this.scene);
                 this.swarm = new Swarm(this.scene, 4000);
                 this.initUI();
-                
-                // On mobile, auto-collapse controls initially to show the art
+
                 if(window.innerWidth < 768) {
                     togglePanel('panel-controls');
                 }
-                
+
                 this.animate();
             }
 
@@ -737,7 +781,6 @@
                 }
                 updateCam();
 
-                // Mouse & Touch handling
                 const handleStart = (x, y, isRight) => {
                     isDrag = true; isRightClick = isRight; last={x,y};
                     if(this.mode === 'experimental' && !isRightClick) {
@@ -747,8 +790,7 @@
 
                 el.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY, e.button===2));
                 el.addEventListener('touchstart', e => {
-                    // Prevent scroll on canvas touch
-                    e.preventDefault(); 
+                    e.preventDefault();
                     handleStart(e.touches[0].clientX, e.touches[0].clientY, false);
                 }, {passive: false});
 
@@ -769,11 +811,10 @@
                         theta -= dx*0.005; phi -= dy*0.005;
                         phi = Math.max(0.1, Math.min(Math.PI-0.1, phi));
                         updateCam();
-                    } 
+                    }
                 };
                 window.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
-                
-                // FIX: Only prevent default if touching canvas, NOT sliders
+
                 window.addEventListener('touchmove', e => {
                     if(e.target === el) {
                         e.preventDefault();
@@ -786,7 +827,7 @@
                 el.addEventListener('wheel', e => { rad = Math.max(2, Math.min(200, rad + e.deltaY*0.05)); updateCam(); });
                 el.addEventListener('contextmenu', e => e.preventDefault());
                 el.addEventListener('dblclick', () => { this.brain.trauma(); this.swarm.explode(); });
-                
+
                 window.addEventListener('resize', () => {
                     this.camera.aspect = window.innerWidth / window.innerHeight;
                     this.camera.updateProjectionMatrix();
@@ -798,12 +839,11 @@
                 const start = (mode) => {
                     // PHASE 1: UNLOCK AUDIO ON START
                     this.audio.unlock();
-                    
-                    // Update button to show active state
+
                     const btn = document.getElementById('audio-toggle');
                     btn.innerText = "AUDIO ACTIVE";
                     btn.classList.add('text-green-400');
-                    
+
                     this.mode = mode;
                     document.getElementById('overlay').style.opacity = 0;
                     setTimeout(()=>document.getElementById('overlay').style.display='none', 1500);
@@ -851,9 +891,8 @@
 
                 document.getElementById('exp-reset').addEventListener('click', () => { this.swarm.target.fill(0); this.brain.trauma(); });
                 document.getElementById('exp-scramble').addEventListener('click', () => { this.swarm.scramble(); this.brain.trauma(); });
-                
+
                 document.getElementById('audio-toggle').addEventListener('click', (e) => {
-                    // PHASE 2: JUST TOGGLE VOLUME
                     const isOn = this.audio.toggle();
                     e.target.innerText = isOn ? "AUDIO ACTIVE" : "AUDIO MUTED";
                     e.target.classList.toggle('text-green-400');
@@ -864,8 +903,6 @@
             animate() {
                 requestAnimationFrame(this.animate.bind(this));
                 const time = performance.now() * 0.001;
-
-                // --- THE GLOBAL BREATH ---
                 const breath = 1.0 + (Math.sin(time * 0.5) * 0.05);
 
                 if (this.mode === 'experimental' && this.isDrawing) {
@@ -878,8 +915,6 @@
                 }
 
                 const stability = this.brain.update(time, this.params.resonance, this.params.vitality);
-
-                // Pass camera pos for billboard sprites & breath for pulsing
                 this.swarm.setCameraPos(this.camera.position);
                 this.swarm.update(time, this.params.resonance, this.params.vitality, stability);
 
