@@ -13,7 +13,7 @@
         /* CORE SETUP */
         body { margin: 0; overflow: hidden; background-color: #000200; color: #aaffaa; font-family: 'Courier New', monospace; user-select: none; -webkit-tap-highlight-color: transparent; }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-
+        
         /* CURSORS */
         .cursor-cross { cursor: crosshair; }
         .cursor-move { cursor: move; }
@@ -91,17 +91,18 @@
     <!-- INTRO OVERLAY -->
     <div id="overlay">
         <h1 class="text-4xl md:text-6xl text-green-500 font-bold mb-8 tracking-widest text-center" style="text-shadow: 0 0 20px rgba(74, 222, 128, 0.5);">MORPHIA</h1>
-
+        
         <div class="flex gap-8 items-stretch flex-wrap justify-center">
             <!-- PATH 1: CLASSIC -->
             <div id="btn-classic" class="mode-card flex flex-col items-center w-64 group">
                 <div class="text-2xl text-green-400 mb-2 font-bold tracking-widest group-hover:text-white">PLATONIC</div>
                 <div class="h-px w-full bg-green-900 mb-4 group-hover:bg-green-500"></div>
                 <p class="text-[10px] text-gray-400 text-center leading-relaxed">
-                    Observe predetermined sacred geometries.
+                    Observe the predetermined sacred geometries. 
                     <br><br>
+                    <span class="text-green-700">Passive. Meditative. Ordered.</span>
                 </p>
-                <div class="mt-8 text-xs border border-green-800 px-4 py-2 text-green-600 group-hover:bg-green-500 group-hover:text-black transition-colors">OPEN</div>
+                <div class="mt-8 text-xs border border-green-800 px-4 py-2 text-green-600 group-hover:bg-green-500 group-hover:text-black transition-colors">INITIATE</div>
             </div>
 
             <!-- PATH 2: EXPERIMENTAL -->
@@ -109,10 +110,11 @@
                 <div class="text-2xl text-yellow-400 mb-2 font-bold tracking-widest group-hover:text-white">QUANTUM</div>
                 <div class="h-px w-full bg-yellow-900 mb-4 group-hover:bg-yellow-500"></div>
                 <p class="text-[10px] text-gray-400 text-center leading-relaxed">
-                    Use the cursor to warp the gravity well.
+                    Seize the cursor and warp the gravity well.
                     <br><br>
+                    <span class="text-yellow-700">Active. Chaotic. Sovereign.</span>
                 </p>
-                <div class="mt-8 text-xs border border-yellow-800 px-4 py-2 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-black transition-colors">OPEN</div>
+                <div class="mt-8 text-xs border border-yellow-800 px-4 py-2 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-black transition-colors">IGNITE</div>
             </div>
         </div>
         <p class="mt-12 text-[10px] text-gray-600 uppercase tracking-widest animate-pulse">Headphones Recommended</p>
@@ -150,7 +152,7 @@
 
     <!-- UI HUD -->
     <div class="absolute top-0 left-0 w-full h-full pointer-events-none p-4 flex flex-col justify-between z-10">
-
+        
         <!-- HEADER: Status & Info -->
         <div class="flex justify-between items-start w-full pointer-events-auto">
             <!-- STATUS PANEL -->
@@ -159,7 +161,7 @@
                     <div class="text-[10px] text-green-500 font-bold opacity-60 tracking-widest">FIELD STATUS</div>
                     <div class="toggle-icon text-green-500 text-[10px]">▼</div>
                 </div>
-
+                
                 <div class="panel-content mt-2">
                     <div class="text-2xl md:text-3xl font-bold tracking-tighter text-green-400" id="field-status" style="text-shadow: 0 0 10px rgba(51,255,51,0.3);">WAITING</div>
                     <div class="flex flex-col mt-4 border-t border-green-900/30 pt-3 gap-2">
@@ -272,7 +274,7 @@
             return tex;
         }
 
-        // --- 1. AUDIO SYSTEM (The Resonant Lung - FIXED) ---
+        // --- 1. AUDIO SYSTEM (Mobile Optimized) ---
         class AudioCore {
             constructor() {
                 this.ctx = null;
@@ -281,8 +283,16 @@
                 this.bells = [];
             }
 
+            // Called ONLY on user interaction
             init() {
-                if(this.isInit) return;
+                if(this.isInit) {
+                    // Re-assert context state on mobile
+                    if(this.ctx && this.ctx.state === 'suspended') {
+                        this.ctx.resume();
+                    }
+                    return;
+                }
+                
                 const AC = window.AudioContext || window.webkitAudioContext;
                 this.ctx = new AC();
                 this.master = this.ctx.createGain();
@@ -294,7 +304,7 @@
                 const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
                 const output = noiseBuffer.getChannelData(0);
 
-                let lastOut = 0; // Fix: Declared before loop
+                let lastOut = 0; 
 
                 for (let i = 0; i < bufferSize; i++) {
                     const white = Math.random() * 2 - 1;
@@ -356,8 +366,8 @@
                 mod.frequency.value = freq * 1.5;
 
                 masterGain.gain.setValueAtTime(0, t);
-                masterGain.gain.linearRampToValueAtTime(0.1 + (stability*0.1), t + 0.1);
-                masterGain.gain.exponentialRampToValueAtTime(0.001, t + 4.0 + (stability*4));
+                masterGain.gain.linearRampToValueAtTime(0.1 + (stability*0.1), t + 0.1); 
+                masterGain.gain.exponentialRampToValueAtTime(0.001, t + 4.0 + (stability*4)); 
 
                 modGain.gain.setValueAtTime(100, t);
                 modGain.gain.exponentialRampToValueAtTime(1, t + 2);
@@ -384,9 +394,20 @@
             }
 
             toggle() {
-                if(!this.ctx) this.init();
-                if(this.ctx.state === 'suspended') { this.ctx.resume(); return true; }
-                else { this.ctx.suspend(); return false; }
+                // Ensure context is created on click
+                if(!this.ctx) {
+                    this.init();
+                    return true;
+                }
+                
+                if(this.ctx.state === 'suspended') { 
+                    this.ctx.resume(); 
+                    return true; 
+                }
+                else { 
+                    this.ctx.suspend(); 
+                    return false; 
+                }
             }
         }
 
@@ -582,7 +603,7 @@
 
             update(time, resonance, vitality, stability) {
                 const dt = 0.016;
-                const breath = Math.sin(time*0.5)*0.1 + 1.0;
+                const breath = Math.sin(time*0.5)*0.1 + 1.0; 
                 const physStability = Math.min(stability, 1.0);
                 const effectiveResonance = resonance * (1.0 + stability);
 
@@ -674,17 +695,17 @@
                 this.mouse = new THREE.Vector2();
                 this.raycaster = new THREE.Raycaster();
                 this.isDrawing = false;
-
+                
                 this.initScene();
                 this.ghost = new GhostField(this.scene);
                 this.swarm = new Swarm(this.scene, 4000);
                 this.initUI();
-
+                
                 // On mobile, auto-collapse controls initially to show the art
                 if(window.innerWidth < 768) {
                     togglePanel('panel-controls');
                 }
-
+                
                 this.animate();
             }
 
@@ -720,7 +741,7 @@
                 el.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY, e.button===2));
                 el.addEventListener('touchstart', e => {
                     // Prevent scroll on canvas touch
-                    e.preventDefault();
+                    e.preventDefault(); 
                     handleStart(e.touches[0].clientX, e.touches[0].clientY, false);
                 }, {passive: false});
 
@@ -741,18 +762,24 @@
                         theta -= dx*0.005; phi -= dy*0.005;
                         phi = Math.max(0.1, Math.min(Math.PI-0.1, phi));
                         updateCam();
-                    }
+                    } 
                 };
                 window.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
+                
+                // FIX: Only prevent default if touching canvas, NOT sliders
                 window.addEventListener('touchmove', e => {
-                    e.preventDefault();
-                    handleMove(e.touches[0].clientX, e.touches[0].clientY);
+                    if(e.target === el) {
+                        e.preventDefault();
+                    }
+                    if(isDrag) {
+                        handleMove(e.touches[0].clientX, e.touches[0].clientY);
+                    }
                 }, {passive: false});
 
                 el.addEventListener('wheel', e => { rad = Math.max(2, Math.min(200, rad + e.deltaY*0.05)); updateCam(); });
                 el.addEventListener('contextmenu', e => e.preventDefault());
                 el.addEventListener('dblclick', () => { this.brain.trauma(); this.swarm.explode(); });
-
+                
                 window.addEventListener('resize', () => {
                     this.camera.aspect = window.innerWidth / window.innerHeight;
                     this.camera.updateProjectionMatrix();
@@ -809,7 +836,7 @@
 
                 document.getElementById('exp-reset').addEventListener('click', () => { this.swarm.target.fill(0); this.brain.trauma(); });
                 document.getElementById('exp-scramble').addEventListener('click', () => { this.swarm.scramble(); this.brain.trauma(); });
-
+                
                 document.getElementById('audio-toggle').addEventListener('click', (e) => {
                     const isOn = this.audio.toggle();
                     e.target.innerText = isOn ? "AUDIO ACTIVE" : "AUDIO MUTED";
