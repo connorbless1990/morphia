@@ -200,6 +200,9 @@
                         <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="spiral">SPIRAL</button>
                         <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="flower">FLOWER</button>
                         <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="scatter">VOID</button>
+                        <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="tree">TREE</button>
+                        <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="kundalini">KUNDALINI</button>
+                        <button class="geo-btn text-green-500 border border-green-900/30 py-3" data-shape="vector">VECTOR</button>
                     </div>
                 </div>
 
@@ -399,8 +402,7 @@
             }
         }
 
-        // --- 3. ARCHITECT (ENHANCED: Volumetric & Surface Sampling) ---
-        // --- 3. ARCHITECT (REVISED: Skeleton + Skin Distribution) ---
+        // --- 3. ARCHITECT (FIXED: Typos & Vector Logic) ---
         class Architect {
             sculpt(targets, point, radius, strength) {
                 const count = targets.length / 3;
@@ -424,42 +426,35 @@
                 let geo;
                 const scale = 1.0;
 
-                // HELPER: Weighted Sampling (30% Edges, 70% Faces)
+                // HELPER: Weighted Sampling
                 const sampleGeometry = (geometry) => {
                     const pos = geometry.attributes.position;
                     const faceCount = pos.count / 3;
-
                     for (let i = 0; i < count; i++) {
-                        // 1. Pick a random face
                         const fIdx = Math.floor(Math.random() * faceCount);
                         const ax = pos.getX(fIdx*3), ay = pos.getY(fIdx*3), az = pos.getZ(fIdx*3);
                         const bx = pos.getX(fIdx*3+1), by = pos.getY(fIdx*3+1), bz = pos.getZ(fIdx*3+1);
                         const cx = pos.getX(fIdx*3+2), cy = pos.getY(fIdx*3+2), cz = pos.getZ(fIdx*3+2);
 
                         let px, py, pz;
-
-                        // DIALECTIC BIAS: 30% of particles stick to edges to define the "Wireframe"
+                        // EDGE BIAS (30%)
                         if (Math.random() < 0.3) {
                             const t = Math.random();
-                            // Pick a random edge on this face (AB, BC, or CA)
                             const edge = Math.random();
-                            if(edge < 0.33) {
-                                px=ax+t*(bx-ax); py=ay+t*(by-ay); pz=az+t*(bz-az);
-                            } else if(edge < 0.66) {
-                                px=bx+t*(cx-bx); py=by+t*(cy-by); pz=bz+t*(cz-bz);
-                            } else {
-                                px=cx+t*(ax-cx); py=cy+t*(ay-cy); pz=cz+t*(az-cz);
-                            }
-                        } else {
-                            // 70% fill the volume (Barycentric)
+                            if(edge < 0.33) { px=ax+t*(bx-ax); py=ay+t*(by-ay); pz=az+t*(bz-az); }
+                            else if(edge < 0.66) { px=bx+t*(cx-bx); py=by+t*(cy-by); pz=bz+t*(cz-bz); }
+                            else { px=cx+t*(ax-cx); py=cy+t*(ay-cy); pz=cz+t*(az-cz); }
+                        }
+                        // VOLUME BIAS (70%)
+                        else {
                             let r1 = Math.random(), r2 = Math.random();
                             if (r1 + r2 > 1) { r1 = 1 - r1; r2 = 1 - r2; }
+                            // *** FIX IS HERE: Changed c.x to cx ***
                             px = ax + r1 * (bx - ax) + r2 * (cx - ax);
                             py = ay + r1 * (by - ay) + r2 * (cy - ay);
                             pz = az + r1 * (bz - az) + r2 * (cz - az);
                         }
 
-                        // Evolution Warp
                         if(evolution > 1.0) {
                             const n = simplex.noise3D(px*0.5, py*0.5, pz*0.5 + (evolution*0.2));
                             const disp = 1 + (n * (evolution - 1.0) * 0.8);
@@ -472,32 +467,160 @@
                 switch(shapeName) {
                     case 'torus': geo = new THREE.TorusKnotGeometry(2.5 * scale, 0.6, 150, 20); break;
                     case 'sphere': geo = new THREE.SphereGeometry(3.0 * scale, 64, 64); break;
-
-                    // KEY FIX: Detail = 0 preserves the sharp "Platonic" angles
                     case 'dodeca': geo = new THREE.DodecahedronGeometry(3.5*scale, 0); break;
                     case 'icosa': geo = new THREE.IcosahedronGeometry(3.5*scale, 0); break;
 
+                    case 'tree': return this._generateTreeOfLife(targets, count, scale, evolution);
+                    case 'kundalini': return this._generateKundalini(targets, count, scale, evolution);
+                    // UPDATED VECTOR LOGIC
+                    case 'vector': return this._generateVectorEq(targets, count, scale, evolution);
                     case 'merkaba': return this._generateMerkaba(targets, count, scale, evolution);
                     case 'flower': return this._generateFlower(targets, count, scale, evolution);
+
                     case 'spiral': this._spiral(targets, count, evolution); return targets;
                     default: this._chaos(targets, count); return targets;
                 }
 
-                if(geo) {
-                    sampleGeometry(geo);
-                    geo.dispose();
-                }
+                if(geo) { sampleGeometry(geo); geo.dispose(); }
                 return targets;
             }
 
+            // --- GENERATORS ---
+
+            _generateTreeOfLife(t, c, s, evo) {
+                const nodes = [
+                    {x:0, y:4, z:0}, {x:1.5, y:3, z:0}, {x:-1.5, y:3, z:0},
+                    {x:1.5, y:1, z:0}, {x:-1.5, y:1, z:0}, {x:0, y:0, z:0},
+                    {x:1.5, y:-1, z:0}, {x:-1.5, y:-1, z:0}, {x:0, y:-2, z:0}, {x:0, y:-4, z:0}
+                ];
+                const paths = [[0,1], [0,2], [1,3], [2,4], [1,5], [2,5], [3,5], [4,5], [3,6], [4,7], [5,6], [5,7], [5,8], [6,8], [7,8], [8,9]];
+                const noiseAmp = (evo - 1.0) * 0.5;
+
+                for(let i=0; i<c; i++) {
+                    let px, py, pz;
+                    if(Math.random() < 0.6) {
+                        const node = nodes[Math.floor(Math.random() * nodes.length)];
+                        const theta = Math.random() * 2 * Math.PI, phi = Math.acos(2 * Math.random() - 1), r = 0.4 * Math.cbrt(Math.random());
+                        px = node.x*s + r * Math.sin(phi) * Math.cos(theta);
+                        py = node.y*s + r * Math.sin(phi) * Math.sin(theta);
+                        pz = node.z*s + r * Math.cos(phi);
+                    } else {
+                        const path = paths[Math.floor(Math.random() * paths.length)];
+                        const n1 = nodes[path[0]], n2 = nodes[path[1]], r = Math.random();
+                        px = (n1.x + (n2.x - n1.x) * r) * s + (Math.random()-0.5)*0.2;
+                        py = (n1.y + (n2.y - n1.y) * r) * s + (Math.random()-0.5)*0.2;
+                        pz = (n1.z + (n2.z - n1.z) * r) * s + (Math.random()-0.5)*0.2;
+                    }
+                    if(evo > 1.0) {
+                        const n = simplex.noise3D(px, py, pz);
+                        px += n * noiseAmp; py += n * noiseAmp; pz += n * noiseAmp;
+                    }
+                    t[i*3]=px; t[i*3+1]=py; t[i*3+2]=pz;
+                }
+                return t;
+            }
+
+            _generateKundalini(t, c, s, evo) {
+                const height = 10 * s;
+                for(let i=0; i<c; i++) {
+                    const pct = i / c, y = (pct - 0.5) * height, angle = pct * Math.PI * 8;
+                    let px, py, pz;
+                    const rand = Math.random();
+                    if (rand < 0.4) { px = (Math.random()-0.5)*0.5; pz = (Math.random()-0.5)*0.5; py = y; }
+                    else if (rand < 0.7) { px = Math.sin(angle)*1.5*s; pz = Math.cos(angle)*1.5*s; py = y; }
+                    else { px = Math.sin(angle + Math.PI)*1.5*s; pz = Math.cos(angle + Math.PI)*1.5*s; py = y; }
+
+                    px += (Math.random()-0.5)*0.2; pz += (Math.random()-0.5)*0.2;
+                    if(evo > 1.0) { const spread = (evo - 1.0)*2.0; px *= (1+spread*0.5); pz *= (1+spread*0.5); }
+                    t[i*3]=px; t[i*3+1]=py; t[i*3+2]=pz;
+                }
+                return t;
+            }
+
+            // REVISED: Proper Cuboctahedron (Vector Equilibrium) with Edges
+            _generateVectorEq(t, c, s, evo) {
+                const r = 3.5 * s;
+                // 12 Vertices of Cuboctahedron
+                const verts = [
+                    {x:r, y:r, z:0}, {x:r, y:-r, z:0}, {x:-r, y:r, z:0}, {x:-r, y:-r, z:0},
+                    {x:r, y:0, z:r}, {x:r, y:0, z:-r}, {x:-r, y:0, z:r}, {x:-r, y:0, z:-r},
+                    {x:0, y:r, z:r}, {x:0, y:r, z:-r}, {x:0, y:-r, z:r}, {x:0, y:-r, z:-r}
+                ];
+
+                // Precompute valid edges (Neighbors are sqrt(2)*r distance apart)
+                // In our coordinate system, distance check is approx 1.414 * r
+                // Simplified: The edges connect specific pairs.
+                // We will just dynamically find a neighbor for the lines.
+
+                for(let i=0; i<c; i++) {
+                    let px, py, pz;
+
+                    // 20% on the Vertices (Nodes)
+                    if (Math.random() < 0.2) {
+                        const v = verts[Math.floor(Math.random() * verts.length)];
+                        px = v.x + (Math.random()-0.5)*0.5;
+                        py = v.y + (Math.random()-0.5)*0.5;
+                        pz = v.z + (Math.random()-0.5)*0.5;
+                    }
+                    // 80% on the Edges (Lines)
+                    else {
+                        // Pick random vertex
+                        const idx1 = Math.floor(Math.random() * verts.length);
+                        const v1 = verts[idx1];
+
+                        // Find a valid neighbor (any vertex approx 1.0 unit 'r' away in component logic)
+                        // In Cuboctahedron, neighbors share exactly one coordinate value?
+                        // Actually, let's just cheat for visual speed:
+                        // Pick another random vertex, if distance is correct-ish, draw line.
+                        // Distance in Cuboctahedron side length = sqrt(2)*r.
+                        // Distance to center = r*sqrt(2) also? No.
+                        // Let's use the known 4 neighbors logic.
+
+                        // Hardcoded neighbor logic for standard (1,1,0) permutations:
+                        // (1,1,0) neighbors: (1,0,1), (1,0,-1), (0,1,1), (0,1,-1)
+                        // It's any vertex that shares exactly one non-zero coordinate? No.
+                        // It is simpler: Valid neighbors have distance^2 = 2*r^2
+
+                        let v2 = v1;
+                        let attempts = 0;
+                        while(attempts < 10) {
+                            const test = verts[Math.floor(Math.random() * verts.length)];
+                            const d2 = (test.x-v1.x)**2 + (test.y-v1.y)**2 + (test.z-v1.z)**2;
+                            // r*r + r*r = 2*r*r. Allow float tolerance.
+                            if(d2 > 0.1 && d2 < (2.1 * r * r)) {
+                                v2 = test;
+                                break;
+                            }
+                            attempts++;
+                        }
+
+                        const lerp = Math.random();
+                        px = v1.x + (v2.x - v1.x) * lerp;
+                        py = v1.y + (v2.y - v1.y) * lerp;
+                        pz = v1.z + (v2.z - v1.z) * lerp;
+
+                        // Add "Jitter" so it looks like energy, not a CAD drawing
+                        px += (Math.random()-0.5)*0.3;
+                        py += (Math.random()-0.5)*0.3;
+                        pz += (Math.random()-0.5)*0.3;
+                    }
+
+                    if(evo > 1.0) {
+                        // Jitterbug Twist
+                        const theta = (evo-1.0) * 1.5;
+                        const oldX=px, oldZ=pz;
+                        px = oldX*Math.cos(theta) - oldZ*Math.sin(theta);
+                        pz = oldX*Math.sin(theta) + oldZ*Math.cos(theta);
+                    }
+                    t[i*3]=px; t[i*3+1]=py; t[i*3+2]=pz;
+                }
+                return t;
+            }
+
             _generateMerkaba(t, c, s, evo) {
-                // Same logic: Low poly tetrahedrons, but sampled on surfaces
                 const g1 = new THREE.TetrahedronGeometry(4*s, 0).toNonIndexed();
                 const g2 = new THREE.TetrahedronGeometry(4*s, 0).toNonIndexed();
                 g2.rotateX(Math.PI/2); g2.rotateZ(Math.PI/4);
-
-                // We manually sample these using the same edge/face logic
-                // (Simplified for brevity, but applies the same bias)
                 const sample = (pos, offset, limit) => {
                     const faces = pos.count/3;
                     for(let i=offset; i<limit; i++) {
@@ -505,11 +628,10 @@
                         const ax=pos.getX(f*3), ay=pos.getY(f*3), az=pos.getZ(f*3);
                         const bx=pos.getX(f*3+1), by=pos.getY(f*3+1), bz=pos.getZ(f*3+1);
                         const cx=pos.getX(f*3+2), cy=pos.getY(f*3+2), cz=pos.getZ(f*3+2);
-
                         let px, py, pz;
-                        if(Math.random() < 0.3) { // Edge bias
+                        if(Math.random() < 0.3) {
                             const r = Math.random();
-                            px=ax+r*(bx-ax); py=ay+r*(by-ay); pz=az+r*(bz-az); // Sample just one edge for speed
+                            px=ax+r*(bx-ax); py=ay+r*(by-ay); pz=az+r*(bz-az);
                         } else {
                             let r1=Math.random(), r2=Math.random();
                             if(r1+r2>1){r1=1-r1;r2=1-r2;}
@@ -528,59 +650,41 @@
                 return t;
             }
 
-            // Keep Flower/Spiral/Chaos from previous valid versions...
             _generateFlower(t, c, s, evo) {
                 const g = new THREE.SphereGeometry(1.2*s,16,16);
                 const pos = g.attributes.position;
-                // The 7 overlapping spheres pattern
-                const ctrs = [
-                    {x:0,y:0,z:0},
-                    {x:2,y:0,z:0}, {x:-2,y:0,z:0},
-                    {x:1,y:1.73,z:0}, {x:-1,y:1.73,z:0},
-                    {x:1,y:-1.73,z:0}, {x:-1,y:-1.73,z:0}
-                ];
+                const ctrs = [{x:0,y:0,z:0},{x:2,y:0,z:0},{x:-2,y:0,z:0},{x:1,y:1.73,z:0},{x:-1,y:1.73,z:0},{x:1,y:-1.73,z:0},{x:-1,y:-1.73,z:0}];
                 const noiseAmp = (evo - 1.0) * 0.3;
-
                 for(let i=0; i<c; i++) {
                     const ct = ctrs[Math.floor(Math.random()*ctrs.length)];
                     const idx = Math.floor(Math.random() * pos.count);
                     let lx = pos.getX(idx), ly = pos.getY(idx), lz = pos.getZ(idx);
-
                     if(evo > 1.0) {
                         const n = simplex.noise3D(lx+ct.x, ly+ct.y, lz+ct.z);
                         const disp = 1 + (n * noiseAmp);
                         lx*=disp; ly*=disp; lz*=disp;
                     }
-                    // Scale and Offset
-                    t[i*3]=lx*s + ct.x*s;
-                    t[i*3+1]=ly*s + ct.y*s;
-                    t[i*3+2]=lz*s + ct.z*s;
+                    t[i*3]=lx*s + ct.x*s; t[i*3+1]=ly*s + ct.y*s; t[i*3+2]=lz*s + ct.z*s;
                 }
                 g.dispose();
                 return t;
             }
 
-            // RESTORED: Primordial Chaos (The Void)
             _chaos(t, c) {
                 for(let i=0; i<c; i++) {
-                    // A wide cubic spread to fill the screen corners
-                    // Range +/- 30 creates a feeling of infinite space
                     t[i*3] = (Math.random() - 0.5) * 60.0;
                     t[i*3+1] = (Math.random() - 0.5) * 60.0;
                     t[i*3+2] = (Math.random() - 0.5) * 60.0;
                 }
             }
+
             _spiral(t, c, evo) {
                 const tw = evo*0.8;
                 const noiseAmp = Math.max(0, evo-1.0);
                 for(let i=0; i<c; i++) {
                     const tt = i/c, ang = tt*Math.PI*20*tw, r=tt*8;
                     let x=r*Math.cos(ang), y=(tt-0.5)*10, z=r*Math.sin(ang);
-                    // BIAS: Add slight random scatter to thickening the spiral line
-                    x += (Math.random()-0.5)*0.5;
-                    y += (Math.random()-0.5)*0.5;
-                    z += (Math.random()-0.5)*0.5;
-
+                    x += (Math.random()-0.5)*0.5; y += (Math.random()-0.5)*0.5; z += (Math.random()-0.5)*0.5;
                     if(noiseAmp > 0) {
                         const n = simplex.noise3D(x*0.1, y*0.1, z*0.1);
                         x += n*noiseAmp; y += n*noiseAmp; z += n*noiseAmp;
@@ -653,7 +757,7 @@
             setCameraPos(pos) { this.cameraPosition = pos; }
         }
 
-        // --- 5. GHOST FIELD (Fixed Consistency) ---
+        // --- 5. GHOST FIELD (UPDATED: Correct Vector Wireframe) ---
         class GhostField {
             constructor(scene) {
                 this.scene = scene;
@@ -670,42 +774,92 @@
                     this.mesh=null;
                 }
                 const s = 1.0;
-                let geo, mat = this.material;
+                let geo;
 
                 switch(name) {
                     case 'torus': geo = new THREE.TorusKnotGeometry(2.5*s, 0.6, 120, 20); break;
                     case 'sphere': geo = new THREE.SphereGeometry(3.0*s, 32, 32); break;
                     case 'dodeca': geo = new THREE.DodecahedronGeometry(3.5*s, 0); break;
                     case 'icosa': geo = new THREE.IcosahedronGeometry(3.5*s, 0); break;
+                    case 'flower': geo = new THREE.IcosahedronGeometry(3.0*s, 1); break;
 
-                    // FIX: High-Res Line instead of Tube
+                    case 'tree':
+                        this.mesh = new THREE.Group();
+                        const nodes = [
+                            {x:0, y:4, z:0}, {x:1.5, y:3, z:0}, {x:-1.5, y:3, z:0},
+                            {x:1.5, y:1, z:0}, {x:-1.5, y:1, z:0}, {x:0, y:0, z:0},
+                            {x:1.5, y:-1, z:0}, {x:-1.5, y:-1, z:0}, {x:0, y:-2, z:0}, {x:0, y:-4, z:0}
+                        ];
+                        const nodeGeo = new THREE.SphereGeometry(0.2, 8, 8);
+                        const nodeMat = this.material.clone();
+                        nodeMat.opacity = 0.2;
+                        nodes.forEach(n => {
+                            const m = new THREE.Mesh(nodeGeo, nodeMat);
+                            m.position.set(n.x, n.y, n.z);
+                            this.mesh.add(m);
+                        });
+                        this.scene.add(this.mesh);
+                        return;
+
+                    case 'kundalini':
+                        const pts1 = [], pts2 = [];
+                        for(let i=0; i<=100; i++) {
+                            const t = i/100; const y = (t-0.5)*10; const ang = t * Math.PI * 8;
+                            pts1.push(new THREE.Vector3(Math.sin(ang)*1.5, y, Math.cos(ang)*1.5));
+                            pts2.push(new THREE.Vector3(Math.sin(ang+Math.PI)*1.5, y, Math.cos(ang+Math.PI)*1.5));
+                        }
+                        const g1 = new THREE.BufferGeometry().setFromPoints(pts1);
+                        const g2 = new THREE.BufferGeometry().setFromPoints(pts2);
+                        const lineMat = new THREE.LineBasicMaterial({ color: 0x44ffaa, transparent: true, opacity: 0.15 });
+                        this.mesh = new THREE.Group();
+                        this.mesh.add(new THREE.Line(g1, lineMat));
+                        this.mesh.add(new THREE.Line(g2, lineMat));
+                        this.scene.add(this.mesh);
+                        return;
+
+                    // NEW: Manually draw the Cuboctahedron wireframe
+                    case 'vector':
+                        const r = 3.5 * s;
+                        const v = [
+                            new THREE.Vector3(r,r,0), new THREE.Vector3(r,-r,0), new THREE.Vector3(-r,r,0), new THREE.Vector3(-r,-r,0),
+                            new THREE.Vector3(r,0,r), new THREE.Vector3(r,0,-r), new THREE.Vector3(-r,0,r), new THREE.Vector3(-r,0,-r),
+                            new THREE.Vector3(0,r,r), new THREE.Vector3(0,r,-r), new THREE.Vector3(0,-r,r), new THREE.Vector3(0,-r,-r)
+                        ];
+                        // Connect valid edges (dist approx sqrt(2)*r)
+                        const vEdges = [];
+                        for(let i=0; i<v.length; i++) {
+                            for(let j=i+1; j<v.length; j++) {
+                                const d2 = v[i].distanceToSquared(v[j]);
+                                if(d2 > 0.1 && d2 < (2.1 * r * r)) {
+                                    vEdges.push(v[i]); vEdges.push(v[j]);
+                                }
+                            }
+                        }
+                        geo = new THREE.BufferGeometry().setFromPoints(vEdges);
+                        this.mesh = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
+                            color: 0x44ffaa, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending
+                        }));
+                        this.scene.add(this.mesh);
+                        return;
+
                     case 'spiral':
                         const pts = [];
-                        // 500 points for silky smoothness
                         for(let i=0; i<500; i++) {
-                            const t = i/500;
-                            const ang = t*Math.PI*20*0.8;
-                            const r = t*8;
+                            const t = i/500; const ang = t*Math.PI*20*0.8; const r = t*8;
                             pts.push(new THREE.Vector3(r*Math.cos(ang), (t-0.5)*10, r*Math.sin(ang)));
                         }
                         geo = new THREE.BufferGeometry().setFromPoints(pts);
-                        // We need a LINE material, not a MESH material
                         this.mesh = new THREE.Line(geo, new THREE.LineBasicMaterial({
-                            color: 0x44ffaa,
-                            transparent: true,
-                            opacity: 0.15, // Reduced opacity as requested
-                            blending: THREE.AdditiveBlending
+                            color: 0x44ffaa, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending
                         }));
                         this.scene.add(this.mesh);
-                        return; // Exit early since we manually added the mesh
+                        return;
 
-                    case 'flower': geo = new THREE.IcosahedronGeometry(3.0*s, 1); break;
                     case 'merkaba':
                         this.mesh = new THREE.Group();
                         const m1 = new THREE.Mesh(new THREE.TetrahedronGeometry(4*s,0), this.material);
                         const m2 = new THREE.Mesh(new THREE.TetrahedronGeometry(4*s,0), this.material);
                         m2.rotateX(Math.PI/2); m2.rotateZ(Math.PI/4);
-                        // Reduced core opacity to be less jarring
                         const coreMat = this.material.clone();
                         coreMat.opacity = 0.05;
                         const core = new THREE.Mesh(new THREE.SphereGeometry(1.5*s, 16, 16), coreMat);
@@ -723,16 +877,21 @@
             animate(stability, time) {
                 if(this.mesh) {
                     this.mesh.rotation.y += 0.002;
-                    // Gyroscope Effect
-                    if(this.mesh.type === 'Group') {
+                    if(this.mesh.type === 'Group' && this.mesh.children.length > 2) {
                         this.mesh.children[0].rotation.z -= 0.001;
                         this.mesh.children[1].rotation.z += 0.001;
                     }
                     const op = 0.02 + (stability * 0.08);
                     const breath = 1.0 + Math.sin(time*0.5) * 0.05;
                     this.mesh.scale.set(breath, breath, breath);
-                    if(this.mesh.type==='Group') this.mesh.children.forEach(c=>c.material.opacity=op);
-                    else this.material.opacity=op;
+
+                    if(this.mesh.type==='Group') {
+                        this.mesh.children.forEach(c => {
+                            if(c.material) c.material.opacity = op;
+                        });
+                    } else {
+                        if(this.mesh.material) this.mesh.material.opacity = op;
+                    }
                 }
             }
         }
