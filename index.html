@@ -32,7 +32,7 @@
         /* MINIMIZE LOGIC */
         .panel-content {
             transition: max-height 0.4s ease-out, opacity 0.3s ease-out;
-            max-height: 1000px; /* Arbitrary large number for transition */
+            max-height: 1000px;
             opacity: 1;
         }
         .minimized .panel-content {
@@ -115,7 +115,6 @@
                 <div class="mt-8 text-xs border border-yellow-800 px-4 py-2 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-black transition-colors">OPEN</div>
             </div>
         </div>
-        <p class="mt-12 text-[10px] text-gray-600 uppercase tracking-widest animate-pulse">Headphones Recommended</p>
     </div>
 
     <!-- INFO MODAL -->
@@ -135,10 +134,10 @@
                 </div>
                 <div>
                     <h3 class="text-sm text-yellow-300 font-bold mb-2 uppercase tracking-wider">Quantum Mode</h3>
-                    <p class="text-[11px] text-gray-400 leading-relaxed mb-4">You become the attractor. The field is empty until you will it.</p>
+                    <p class="text-[11px] text-gray-400 leading-relaxed mb-4">An active visualization of Sheldrake's Morphic Resonance.</p>
                     <ul class="text-[10px] text-yellow-600 space-y-2 list-disc pl-4">
                         <li><span class="text-yellow-400">Drag:</span> Creates gravity.</li>
-                        <li><span class="text-yellow-400">Volumetric Brush:</span> Move slowly for dense clouds.</li>
+                        <li><span class="text-yellow-400">Volumetric Brush:</span> Move very slowly for dense clouds.</li>
                     </ul>
                 </div>
             </div>
@@ -272,45 +271,50 @@
             return tex;
         }
 
-        // --- 1. AUDIO SYSTEM (Mobile Optimized) ---
+        // --- 1. AUDIO SYSTEM (iOS Hardened) ---
         class AudioCore {
             constructor() {
                 this.ctx = null;
                 this.master = null;
                 this.isInit = false;
+                this.isEnabled = false;
                 this.bells = [];
             }
 
-            // Called ONLY on user interaction
-            init() {
-                if(this.isInit) {
-                    // Re-assert context state on mobile
-                    if(this.ctx && this.ctx.state === 'suspended') {
-                        this.ctx.resume();
-                    }
-                    return;
-                }
+            // Phase 1: Unlock on user Interaction (Initiate Button)
+            unlock() {
+                if(this.isInit) return;
                 
                 const AC = window.AudioContext || window.webkitAudioContext;
                 this.ctx = new AC();
                 this.master = this.ctx.createGain();
-                this.master.gain.value = 0.3; // Master volume
+                this.master.gain.value = 0.0; // Start MUTED but RUNNING
                 this.master.connect(this.ctx.destination);
 
-                // 1. PRIMORDIAL NOISE (Pink Noise Generator)
+                // Create the infinite loops immediately
+                this.setupLoops();
+                
+                // Hard resume for iOS
+                if(this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+
+                this.isInit = true;
+                console.log("Audio Unlocked & Running (Muted)");
+            }
+
+            setupLoops() {
+                // 1. PRIMORDIAL NOISE
                 const bufferSize = 2 * this.ctx.sampleRate;
                 const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
                 const output = noiseBuffer.getChannelData(0);
-
                 let lastOut = 0; 
-
                 for (let i = 0; i < bufferSize; i++) {
                     const white = Math.random() * 2 - 1;
                     output[i] = (lastOut + (0.02 * white)) / 1.02;
                     lastOut = output[i];
                     output[i] *= 3.5;
                 }
-
                 this.noiseNode = this.ctx.createBufferSource();
                 this.noiseNode.buffer = noiseBuffer;
                 this.noiseNode.loop = true;
@@ -320,35 +324,45 @@
                 this.noiseGain.connect(this.master);
                 this.noiseNode.start();
 
-                // 2. THE ISOSTATIC FIELD (7Hz Pulse)
+                // 2. ISOSTATIC DRONE
                 this.droneOsc = this.ctx.createOscillator();
                 this.droneOsc.type = 'sine';
-                this.droneOsc.frequency.value = 55.0; // Low Earth Tone A1
-
+                this.droneOsc.frequency.value = 55.0; 
                 this.droneGain = this.ctx.createGain();
                 this.droneGain.gain.value = 0.0;
-
-                // 7Hz LFO
                 this.lfo = this.ctx.createOscillator();
                 this.lfo.frequency.value = 7.0;
                 this.lfoGain = this.ctx.createGain();
                 this.lfoGain.gain.value = 0.15;
-
                 this.lfo.connect(this.lfoGain);
                 this.lfoGain.connect(this.droneGain.gain);
-
                 this.droneOsc.connect(this.droneGain);
                 this.droneGain.connect(this.master);
-
                 this.droneOsc.start();
                 this.lfo.start();
-
-                this.isInit = true;
             }
 
-            // Method to play a single FM Bell
+            // Phase 2: User Toggles Volume
+            toggle() {
+                // Double check resume just in case
+                if(this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+
+                this.isEnabled = !this.isEnabled;
+                // Ramp volume smoothly
+                const t = this.ctx.currentTime;
+                if(this.isEnabled) {
+                    this.master.gain.setTargetAtTime(0.3, t, 0.1);
+                    return true;
+                } else {
+                    this.master.gain.setTargetAtTime(0, t, 0.1);
+                    return false;
+                }
+            }
+
             triggerBell(stability) {
-                if(!this.isInit) return;
+                if(!this.isInit || !this.isEnabled) return;
 
                 const t = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator();
@@ -356,7 +370,6 @@
                 const masterGain = this.ctx.createGain();
                 const modGain = this.ctx.createGain();
 
-                // Pentatonic frequencies roughly
                 const freqs = [110, 164.8, 196, 220, 293.6];
                 const freq = freqs[Math.floor(Math.random() * freqs.length)] * (Math.random() > 0.5 ? 0.5 : 1);
 
@@ -388,23 +401,6 @@
 
                 if (Math.random() < 0.005 + (vitality * 0.01)) {
                     this.triggerBell(stability);
-                }
-            }
-
-            toggle() {
-                // Ensure context is created on click
-                if(!this.ctx) {
-                    this.init();
-                    return true;
-                }
-                
-                if(this.ctx.state === 'suspended') { 
-                    this.ctx.resume(); 
-                    return true; 
-                }
-                else { 
-                    this.ctx.suspend(); 
-                    return false; 
                 }
             }
         }
@@ -787,6 +783,9 @@
 
             initUI() {
                 const start = (mode) => {
+                    // PHASE 1: UNLOCK AUDIO ON START
+                    this.audio.unlock();
+                    
                     this.mode = mode;
                     document.getElementById('overlay').style.opacity = 0;
                     setTimeout(()=>document.getElementById('overlay').style.display='none', 1500);
@@ -836,6 +835,7 @@
                 document.getElementById('exp-scramble').addEventListener('click', () => { this.swarm.scramble(); this.brain.trauma(); });
                 
                 document.getElementById('audio-toggle').addEventListener('click', (e) => {
+                    // PHASE 2: JUST TOGGLE VOLUME
                     const isOn = this.audio.toggle();
                     e.target.innerText = isOn ? "AUDIO ACTIVE" : "AUDIO MUTED";
                     e.target.classList.toggle('text-green-400');
