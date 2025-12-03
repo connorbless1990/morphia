@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MORPHIA: A morphic field visualizer</title>
+    <title>MORPHIA: Dualistic Field</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -101,7 +101,7 @@
                     Observe the predetermined sacred geometries.
                     <br><br>
                 </p>
-                <div class="mt-8 text-xs border border-green-800 px-4 py-2 text-green-600 group-hover:bg-green-500 group-hover:text-black transition-colors">INITIATE</div>
+                <div class="mt-8 text-xs border border-green-800 px-4 py-2 text-green-600 group-hover:bg-green-500 group-hover:text-black transition-colors">OPEN</div>
             </div>
 
             <!-- PATH 2: EXPERIMENTAL -->
@@ -112,7 +112,7 @@
                     Seize the cursor and warp the gravity well.
                     <br><br>
                 </p>
-                <div class="mt-8 text-xs border border-yellow-800 px-4 py-2 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-black transition-colors">IGNITE</div>
+                <div class="mt-8 text-xs border border-yellow-800 px-4 py-2 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-black transition-colors">OPEN</div>
             </div>
         </div>
         <p class="mt-12 text-[10px] text-gray-600 uppercase tracking-widest animate-pulse">Headphones Recommended. Silent Switch Off.</p>
@@ -670,12 +670,25 @@
                 return t;
             }
 
+            // Inside class Architect ...
+
+            // RESTORED: Volumetric Cloud (The "Low Entropy Field")
             _chaos(t, c) {
                 for(let i=0; i<c; i++) {
-                    t[i*3] = (Math.random() - 0.5) * 60.0;
-                    t[i*3+1] = (Math.random() - 0.5) * 60.0;
-                    t[i*3+2] = (Math.random() - 0.5) * 60.0;
+                    //  Old.txt Logic:
+                    // 1. Radius = 15 (contained view)
+                    // 2. cbrt() creates even volumetric density (gas cloud) rather than center-clumping
+                    const r = 15 * Math.cbrt(Math.random());
+
+                    // Spherical Coordinates
+                    const theta = Math.random() * 2 * Math.PI;
+                    const phi = Math.acos(2 * Math.random() - 1);
+
+                    t[i*3] = r * Math.sin(phi) * Math.cos(theta);
+                    t[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+                    t[i*3+2] = r * Math.cos(phi);
                 }
+                return t; // Important: Don't forget this!
             }
 
             _spiral(t, c, evo) {
@@ -703,9 +716,15 @@
                 const tex = createGlowTexture();
                 const geo = new THREE.PlaneGeometry(0.3, 0.3);
                 const mat = new THREE.MeshBasicMaterial({
-                    map: tex, color: 0xffffff, transparent: true, opacity: 0.8,
-                    depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide
+                    map: tex,
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 1.0, // UPDATED: Max visibility
+                    depthWrite: false,
+                    blending: THREE.AdditiveBlending,
+                    side: THREE.DoubleSide
                 });
+
                 this.mesh = new THREE.InstancedMesh(geo, mat, count);
                 this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
                 this.mesh.frustumCulled = false;
@@ -728,7 +747,8 @@
                 const dt = 0.016; const breath = Math.sin(time*0.5)*0.1 + 1.0;
                 const physStability = Math.min(stability, 1.0);
                 const effectiveResonance = resonance * (1.0 + stability);
-                const colorChaos = new THREE.Color(0xff2200); const colorOrder = new THREE.Color(0x00ffff);
+                const colorChaos = new THREE.Color(0xff4400);
+                const colorOrder = new THREE.Color(0x00ffff);
                 const currentColor = new THREE.Color().lerpColors(colorChaos, colorOrder, physStability);
                 for(let i=0; i<this.count; i++) {
                     const ix=i*3, iy=i*3+1, iz=i*3+2;
@@ -1008,6 +1028,8 @@
                     setTimeout(()=>document.getElementById('overlay').style.display='none', 1500);
                     document.getElementById('field-status').innerText = (mode === 'classic') ? "SCATTER" : "VOID";
                     if(mode === 'experimental') {
+                        this.swarm.scramble();
+                        document.getElementById('field-status').innerText = "QUANTUM";
                         document.getElementById('panel-archetypes').classList.add('hidden');
                         document.getElementById('panel-experimental').classList.remove('hidden');
                         document.getElementById('exp-tip').classList.remove('hidden');
