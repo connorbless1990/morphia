@@ -127,39 +127,55 @@ export class Swarm {
     }
 
     /**
-     * Update particle simulation
-     * @param {number} time - Current time
-     * @param {number} resonance - Field resonance (order)
-     * @param {number} vitality - Field vitality (chaos)
-     * @param {number} stability - Current stability
-     * @param {number} evolution - Evolution factor
-     */
-    update(time, resonance, vitality, stability, evolution) {
+         * Update particle simulation
+         * @param {number} time - Current time
+         * @param {number} resonance - Field resonance (order)
+         * @param {number} vitality - Field vitality (chaos)
+         * @param {number} stability - Current stability
+         * @param {number} evolution - Evolution factor
+         * @param {number} breathCycle - The 0-1 breath cycle value
+         */
+    update(time, resonance, vitality, stability, evolution, breathCycle) {
         const dt = APP_CONFIG.DELTA_TIME;
         const breath = Math.sin(time * 0.5) * 0.1 + 1.0;
-        const physStability = Math.min(stability, 1.0);
+        
+        // VISUAL FIX 1: Diminishing returns on stability
+        // We cap the visual effects at 1.2 (120%) so high scores don't ruin the shape
+        const visualStability = Math.min(stability, 1.2);
+        
+        // Color interpolation clamp (stops at 1.0)
+        const colorStability = Math.min(stability, 1.0);
 
         // Dynamic grip - high vitality weakens resonance
         const chaosDampener = 1.0 - (vitality * 0.8);
-        const effectiveResonance = Math.max(resonance, 0.2) * (1.0 + stability) * chaosDampener;
+        
+        // VISUAL FIX 2: Clamp the maximum attraction force
+        // Previously: (1.0 + stability) allowed infinite gravity (creating the blob)
+        // Now: We cap the gravity multiplier at 2.5x max
+        const gravityCap = 1.0 + Math.min(stability, 1.5); 
+        const effectiveResonance = Math.max(resonance, 0.2) * gravityCap * chaosDampener;
 
         // Color interpolation
         const colorChaos = new THREE.Color(COLORS.CHAOS);
         const colorOrder = new THREE.Color(COLORS.ORDER);
-        const currentColor = new THREE.Color().lerpColors(colorChaos, colorOrder, physStability);
+        const currentColor = new THREE.Color().lerpColors(colorChaos, colorOrder, colorStability);
 
         // Dynamic turbulence based on evolution
         const timeScale = time * (0.2 * evolution);
         const fieldScale = 0.15;
         const fieldStrength = 0.5 + (vitality * 2.0);
+        
+        // VISUAL FIX 3: Breath scale
+        // We allow the breath to be slightly more pronounced when stable to keep it "alive"
+        const breathScale = 1.0 + (breathCycle * (0.15 + (visualStability * 0.05)));
 
         for (let i = 0; i < this.count; i++) {
             const ix = i * 3, iy = i * 3 + 1, iz = i * 3 + 2;
 
-            // Attraction to target
-            let fx = (this.target[ix] - this.pos[ix]) * effectiveResonance * 5.0;
-            let fy = (this.target[iy] - this.pos[iy]) * effectiveResonance * 5.0;
-            let fz = (this.target[iz] - this.pos[iz]) * effectiveResonance * 5.0;
+            // Apply breath to the target position (The attractor breathes)
+            let fx = (this.target[ix] * breathScale - this.pos[ix]) * effectiveResonance * 5.0;
+            let fy = (this.target[iy] * breathScale - this.pos[iy]) * effectiveResonance * 5.0;
+            let fz = (this.target[iz] * breathScale - this.pos[iz]) * effectiveResonance * 5.0;
 
             // Flow field (4D noise)
             const nx = this.simplex.noise4D(
@@ -187,8 +203,8 @@ export class Swarm {
 
             // Containment force
             const d2 = this.pos[ix] * this.pos[ix] +
-                       this.pos[iy] * this.pos[iy] +
-                       this.pos[iz] * this.pos[iz];
+                    this.pos[iy] * this.pos[iy] +
+                    this.pos[iz] * this.pos[iz];
 
             if (d2 > APP_CONFIG.CONTAINMENT_RADIUS_SQ) {
                 const pull = -0.01;
@@ -216,7 +232,12 @@ export class Swarm {
             // Update instance matrix
             this.dummy.position.set(this.pos[ix], this.pos[iy], this.pos[iz]);
             this.dummy.lookAt(this.cameraPosition);
-            const s = (0.5 + (stability * 0.5)) * breath;
+            
+            // VISUAL FIX 4: Clamped Scale
+            // Use 'visualStability' (capped at 1.2) instead of raw 'stability'
+            // This prevents particles from becoming massive at high scores
+            const s = (0.5 + (visualStability * 0.5)) * (0.8 + (breath * 0.4));
+            
             this.dummy.scale.set(s, s, s);
             this.dummy.updateMatrix();
             this.mesh.setMatrixAt(i, this.dummy.matrix);

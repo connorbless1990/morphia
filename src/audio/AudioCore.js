@@ -103,13 +103,33 @@ export class AudioCore {
      * @private
      */
     setupDroneLoop() {
-        this.droneOsc = this.ctx.createOscillator();
-        this.droneOsc.type = 'sine';
-        this.droneOsc.frequency.value = AUDIO_CONFIG.DRONE_BASE_FREQUENCY;
+        // FREQUENCIES
+
+        // Left Ear (Base)
+        this.droneOscL = this.ctx.createOscillator();
+        this.droneOscL.type = 'sine';
+        this.droneOscL.frequency.value = AUDIO_CONFIG.ROOT_FREQ;
+
+        // Right Ear (Base + 7Hz) -> Brain creates the phantom 7Hz beat
+        this.droneOscR = this.ctx.createOscillator();
+        this.droneOscR.type = 'sine';
+        this.droneOscR.frequency.value = AUDIO_CONFIG.ROOT_FREQ + AUDIO_CONFIG.THETA_BEAT;
+
+        // Stereo Panning
+        const merger = this.ctx.createChannelMerger(2);
+        this.droneOscL.connect(merger, 0, 0); // Left input
+        this.droneOscR.connect(merger, 0, 1); // Right input
 
         this.droneGain = this.ctx.createGain();
         this.droneGain.gain.value = 0.0;
 
+        merger.connect(this.droneGain);
+        this.droneGain.connect(this.master);
+
+        this.droneOscL.start();
+        this.droneOscR.start();
+
+        // LFO for subtle frequency modulation
         this.lfo = this.ctx.createOscillator();
         this.lfo.frequency.value = AUDIO_CONFIG.LFO_FREQUENCY;
 
@@ -118,10 +138,7 @@ export class AudioCore {
 
         this.lfo.connect(this.lfoGain);
         this.lfoGain.connect(this.droneGain.gain);
-        this.droneOsc.connect(this.droneGain);
-        this.droneGain.connect(this.master);
-
-        this.droneOsc.start();
+        
         this.lfo.start();
     }
 
@@ -195,7 +212,10 @@ export class AudioCore {
         if (!this.isInit) return;
 
         const targetDrone = 0.1 + (stability * 0.2);
-        this.droneGain.gain.setTargetAtTime(targetDrone * breath, this.ctx.currentTime, 0.5);
+        // Breath-based volume swelling (Oceanic feeling)
+        const baseVol = 0.1 + (stability * 0.2);
+        const breathVol = baseVol * (0.8 + (breath * 0.4)); // Swells by 40% on inhale
+        this.droneGain.gain.setTargetAtTime(breathVol, this.ctx.currentTime, 0.5);
 
         // Randomly trigger bells based on vitality
         const bellProbability = AUDIO_CONFIG.BELL_PROBABILITY_BASE +
