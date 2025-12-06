@@ -58,6 +58,8 @@ export const AUDIO_CONFIG = {
     BELL_FREQUENCIES: [110, 164.8, 196, 220, 293.6],
     BELL_PROBABILITY_BASE: 0.005,
     BELL_PROBABILITY_VITALITY_FACTOR: 0.01,
+    ROOT_FREQ : 136.1, // The "Om" / Earth Year frequency
+    THETA_BEAT : 7.0, // The target brainwave state (meditative)
 };
 
 export const SCULPT_CONFIG = {

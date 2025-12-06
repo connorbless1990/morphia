@@ -17,11 +17,13 @@ import { MorphicBrain } from './simulation/MorphicBrain.js';
 import { SceneManager, InputController } from './scene/index.js';
 import { Swarm, Ether, GhostField } from './particles/index.js';
 import { UIController } from './ui/index.js';
+import { MorphicNetwork } from './network/morphicNetwork.js';
 
 export class App {
     constructor() {
         // Get simplex noise from global (loaded via CDN)
         this.simplex = new SimplexNoise();
+        this.network = new MorphicNetwork(); // Initialize the link to the morphic field
 
         // Initialize core systems
         this.audio = new AudioCore();
@@ -75,9 +77,12 @@ export class App {
             this.swarm.setShape(shape, evolution);
             this.ghost.updateShape(shape, evolution);
             this.brain.reset();
+            const params = this.uiController.getParams();
+            this.network.tuneIn(shape, params);
         });
 
         // Parameter change
+        // 2. When Sliders Move -> Check the Cloud (Debounced ideally, but direct is ok for now)
         eventBus.on(EVENTS.PARAM_CHANGED, ({ key, value }) => {
             if (key === 'evolution' && this.uiController.getMode() === MODES.CLASSIC) {
                 const shape = this.uiController.getCurrentShape() || 'scatter';
@@ -87,6 +92,11 @@ export class App {
             } else {
                 this.brain.stress(0.05);
             }
+            const params = this.uiController.getParams();
+            // Optional: Only tuneIn if they stop dragging for 1s. 
+            // For now, let's just update periodically or on mouseUp (if UI supports it).
+            // Or simpler: Just update the local params, and let the 'reinforce' loop handle the key gen.
+            this.network.tuneIn(this.uiController.getCurrentShape(), params);
         });
 
         // Disrupt (explosion)
@@ -110,9 +120,27 @@ export class App {
         requestAnimationFrame(this.animate);
 
         const time = performance.now() * 0.001;
-        const breath = 1.0 + (Math.sin(time * 0.5) * 0.05);
+        
+        // IMPLANT: Biological Irregularity (Simulated HRV)
+        // Instead of a perfect metronome, we warp time slightly using noise.
+        // This creates "drift" - the breath cycle will naturally speed up and slow down
+        // just like a real living organism.
+        // noise factor 0.05 = very slow change (approx every 20 seconds)
+        // magnitude 1.5 = pulls the time forward/backward by up to 1.5 seconds
+        const bioDrift = this.simplex.noise2D(time * 0.05, 42) * 1.5;
+        const biologicalTime = time + bioDrift;
+
+        // Coherent Breathing (11s cycle modulated by bioDrift)
+        const breathCycle = (Math.sin(biologicalTime * (Math.PI * 2 / 11)) + 1) / 2;
+        
         const params = this.uiController.getParams();
         const mode = this.uiController.getMode();
+
+        // GET THE GLOBAL HABIT STRENGTH
+        const morphicBoost = this.network.getResonanceBoost();
+        // Pass the boost to the Brain and Swarm
+        // We add the boost to the base resonance
+        const effectiveResonance = params.resonance + morphicBoost;
 
         // Update intersection for sculpting
         this.inputController.updateIntersection();
@@ -131,18 +159,24 @@ export class App {
         }
 
         // Update systems
-        const stability = this.brain.update(time, params.resonance, params.vitality);
+        const stability = this.brain.update(time, effectiveResonance, params.vitality);
         this.swarm.setCameraPos(this.sceneManager.getCamera().position);
-        this.swarm.update(time, params.resonance, params.vitality, stability, params.evolution);
+        
+        // Pass the new organic breathCycle
+        this.swarm.update(time, effectiveResonance, params.vitality, stability, params.evolution, breathCycle);
+        
         this.ether.update(time, params.vitality);
 
-        // Animate ghost in classic mode
-        if (mode === MODES.CLASSIC) {
-            this.ghost.animate(stability, time);
-        }
+        // REINFORCEMENT LOOP
+        // If the user is holding the field stable (> 0.5) for a while, 
+        // they contribute to the global memory.
+        if (stability > 0.5 && mode === MODES.CLASSIC) {
+            const shape = this.uiController.getCurrentShape();
+            this.network.reinforce(shape, params);
+       }
 
-        // Update audio
-        this.audio.update(stability, params.vitality, breath);
+        // Update audio (Audio stays synced to the organic irregularity)
+        this.audio.update(stability, params.vitality, breathCycle);
 
         // Render
         this.sceneManager.render();

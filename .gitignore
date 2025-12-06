@@ -1,0 +1,37 @@
+# --- OS Junk ---
+.DS_Store
+Thumbs.db
+._*
+
+# --- Dependencies ---
+# Even if you use CDNs now, you might use npm later
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# --- Environment Variables (Security) ---
+# NEVER commit these. This is where API keys live if you move off hardcoding.
+.env
+.env.local
+.env.*.local
+
+# --- Vercel ---
+# Vercel build cache and local dev settings
+.vercel/
+
+# --- Firebase ---
+# Firebase cache and debug logs
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# --- Build Outputs ---
+# If you ever add a build step (Webpack/Vite)
+dist/
+build/
+out/
+
+# --- Editor Settings ---
+# Personal workspace settings shouldn't be shared
+.vscode/
+.idea/
