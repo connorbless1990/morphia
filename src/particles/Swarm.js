@@ -1,5 +1,5 @@
 /**
- * Swarm Module updated
+ * Swarm Module
  * Main particle system for the morphic field visualization
  * Single Responsibility: Particle physics simulation and rendering
  */
@@ -136,6 +136,35 @@ export class Swarm {
     }
 
     /**
+     * CALCULATE CURL (VORTICITY)
+     * Instead of getting the noise value (density), we get the rate of change (slope)
+     * and rotate it to find the direction of the flow.
+     */
+    computeCurl(x, y, z, time) {
+        const eps = 0.1; // Epsilon (distance to sample neighbor)
+
+        // Find the "slope" of the noise in all 3 directions
+        // Rate of change in Y
+        const n1 = this.simplex.noise4D(x, y + eps, z, time); 
+        const n2 = this.simplex.noise4D(x, y - eps, z, time); 
+        const a = (n1 - n2) / (2 * eps);
+
+        // Rate of change in Z
+        const n3 = this.simplex.noise4D(x, y, z + eps, time); 
+        const n4 = this.simplex.noise4D(x, y, z - eps, time); 
+        const b = (n3 - n4) / (2 * eps);
+
+        // Rate of change in X
+        const n5 = this.simplex.noise4D(x + eps, y, z, time); 
+        const n6 = this.simplex.noise4D(x - eps, y, z, time); 
+        const c = (n5 - n6) / (2 * eps);
+
+        // Curl = (dy/dz - dz/dy, dz/dx - dx/dz, dx/dy - dy/dx)
+        // This is the cross product equivalent that creates "Spin"
+        return new THREE.Vector3(a - b, b - c, c - a);
+    }
+
+    /**
      * Update particle simulation
      * @param {number} time - Current time
      * @param {number} resonance - Field resonance (order)
@@ -149,17 +178,15 @@ export class Swarm {
         const breath = Math.sin(time * 0.5) * 0.1 + 1.0;
         
         // VISUAL FIX 1: Diminishing returns on stability
-        // We cap the visual effects so high scores don't ruin the shape
         const visualStability = Math.min(stability, 1.2);
         
-        // Color interpolation clamp (stops at 1.0)
+        // Color interpolation clamp
         const colorStability = Math.min(stability, 1.0);
 
         // Dynamic grip - high vitality weakens resonance
         const chaosDampener = 1.0 - (vitality * 0.8);
         
         // VISUAL FIX 2: Clamp the maximum attraction force
-        // Now: We cap the gravity multiplier at 2.5x max
         const gravityCap = 1.0 + Math.min(stability, 1.5); 
         const effectiveResonance = Math.max(resonance, 0.2) * gravityCap * chaosDampener;
 
@@ -168,11 +195,10 @@ export class Swarm {
         const colorOrder = new THREE.Color(COLORS.ORDER);
         const currentColor = new THREE.Color().lerpColors(colorChaos, colorOrder, colorStability);
 
-        // VISUAL FIX 3: Dynamic Field Scaling
-        // As evolution (turbulence speed) increases, we lower the field scale (zoom in).
-        // This turns "fast static" into "large rolling waves" so the shape is preserved.
+        // VISUAL FIX 3: Dynamic Field Scaling (Zoom In)
+        // As evolution increases, we lower the field scale to keep structures large
         const timeScale = time * (0.2 * evolution);
-        const fieldScale = 0.15 / (1.0 + (evolution * 0.5)); // Zooms in as chaos rises
+        const fieldScale = 0.15 / (1.0 + (evolution * 0.5)); 
         
         const fieldStrength = 0.5 + (vitality * 2.0);
         const breathScale = 1.0 + (breathCycle * (0.15 + (visualStability * 0.05)));
@@ -180,35 +206,25 @@ export class Swarm {
         for (let i = 0; i < this.count; i++) {
             const ix = i * 3, iy = i * 3 + 1, iz = i * 3 + 2;
 
-            // Apply breath to the target position (The attractor breathes)
+            // 1. ATTRACTION (The Blueprint)
+            // Apply breath to the target position
             let fx = (this.target[ix] * breathScale - this.pos[ix]) * effectiveResonance * 5.0;
             let fy = (this.target[iy] * breathScale - this.pos[iy]) * effectiveResonance * 5.0;
             let fz = (this.target[iz] * breathScale - this.pos[iz]) * effectiveResonance * 5.0;
 
-            // Flow field (4D noise) with TELEPORTATION
-            // We add the massive noiseOffset to every coordinate lookup
-            const nx = this.simplex.noise4D(
+            // 2. VORTICITY (The Natural Flow)
+            // Calculate Curl Noise instead of Standard Noise
+            const curl = this.computeCurl(
                 (this.pos[ix] * fieldScale) + this.noiseOffset.x, 
                 (this.pos[iy] * fieldScale) + this.noiseOffset.y, 
                 (this.pos[iz] * fieldScale) + this.noiseOffset.z, 
                 timeScale
             );
-            const ny = this.simplex.noise4D(
-                (this.pos[ix] * fieldScale) + this.noiseOffset.x + 100,
-                (this.pos[iy] * fieldScale) + this.noiseOffset.y + 100,
-                (this.pos[iz] * fieldScale) + this.noiseOffset.z + 100,
-                timeScale
-            );
-            const nz = this.simplex.noise4D(
-                (this.pos[ix] * fieldScale) + this.noiseOffset.x + 200,
-                (this.pos[iy] * fieldScale) + this.noiseOffset.y + 200,
-                (this.pos[iz] * fieldScale) + this.noiseOffset.z + 200,
-                timeScale
-            );
 
-            fx += nx * vitality * fieldStrength;
-            fy += ny * vitality * fieldStrength;
-            fz += nz * vitality * fieldStrength;
+            // Apply the curl as the chaotic force
+            fx += curl.x * vitality * fieldStrength;
+            fy += curl.y * vitality * fieldStrength;
+            fz += curl.z * vitality * fieldStrength;
 
             // Containment force
             const d2 = this.pos[ix] * this.pos[ix] +
@@ -238,7 +254,7 @@ export class Swarm {
             this.pos[iy] += this.vel[iy];
             this.pos[iz] += this.vel[iz];
 
-            // Update instance matrix
+            // Update instance
             this.dummy.position.set(this.pos[ix], this.pos[iy], this.pos[iz]);
             this.dummy.lookAt(this.cameraPosition);
             
@@ -257,7 +273,6 @@ export class Swarm {
 
     /**
      * Set camera position for billboard effect
-     * @param {THREE.Vector3} pos - Camera position
      */
     setCameraPos(pos) {
         this.cameraPosition = pos;
@@ -272,4 +287,3 @@ export class Swarm {
         this.mesh.material.dispose();
     }
 }
-
