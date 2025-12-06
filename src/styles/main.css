@@ -17,7 +17,7 @@
     --color-red-dark: #7f1d1d;
 
     /* Glass effect */
-    --glass-bg: rgba(0, 15, 5, 0.65);
+    --glass-bg: rgba(0, 15, 5, 0.10);
     --glass-border: rgba(51, 255, 51, 0.15);
     --glass-blur: 12px;
 
@@ -259,4 +259,23 @@ input[type=range]::-moz-range-track {
 
 .animate-pulse {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ========================================
+   Minimize Tweaks (Tighten the box)
+   ======================================== */
+
+/* 1. Shrink the outer padding when minimized */
+/* This overrides the Tailwind 'p-4' and 'p-6' classes */
+.glass-panel.minimized {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+}
+
+/* 2. Specifically for the Controls Panel: Remove the separator line */
+/* When minimized, we don't need the line under the word "CONTROLS" */
+#panel-controls.minimized > div:first-child {
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
 }

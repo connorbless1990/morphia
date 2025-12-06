@@ -6,7 +6,7 @@
 
 // Import Firebase directly from Google's CDN (Works in browser without npm)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -86,7 +86,7 @@ export class MorphicNetwork {
             // Atomic increment: Safe even if 100 people update at once
             await setDoc(docRef, { 
                 count: increment(1),
-                lastActive: new Date().toISOString()
+                lastActive: serverTimestamp()
             }, { merge: true });
             
             this.currentHabitStrength++;
