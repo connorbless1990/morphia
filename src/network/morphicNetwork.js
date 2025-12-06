@@ -20,10 +20,17 @@ const firebaseConfig = {
 
 export class MorphicNetwork {
     constructor() {
+        // Initialize Firebase
         this.app = initializeApp(firebaseConfig);
         this.db = getFirestore(this.app);
+        
+        // State
         this.currentHabitStrength = 0; // 0 = New idea, 1000 = Ancient tradition
-        this.lastReinforceTime = 0;
+        this.lastReinforceTime = 0;    // Timestamp of last successful write
+        
+        // LOCK: Prevents "Async Race Conditions" 
+        // (Stops the app from sending 20 requests while waiting for the first one to finish)
+        this.isReinforcing = false;    
     }
 
     /**
@@ -32,13 +39,10 @@ export class MorphicNetwork {
      */
     generateFingerprint(shapeName, params) {
         // Quantize to nearest 10% (0.1)
-        // Example: Vitality 0.45 becomes 0.5
         const r = Math.round(params.resonance * 10);
         const v = Math.round(params.vitality * 10);
         const e = Math.round(params.evolution * 10);
         
-        // We do NOT include breathCycle because that changes every second.
-        // We look for the "Structure", not the "Moment".
         return `${shapeName}_R${r}_V${v}_E${e}`;
     }
 
@@ -47,19 +51,19 @@ export class MorphicNetwork {
      */
     async tuneIn(shapeName, params) {
         const fingerprint = this.generateFingerprint(shapeName, params);
-        // DEBUG LOG: Show me exactly what key I am looking for
+        
+        // Debugging logs to help verify what key we are looking for
         console.log(`🔎 [MorphicNetwork] Checking Cloud for Key: "${fingerprint}"`);
+
         const docRef = doc(this.db, "morphic_field", fingerprint);
 
         try {
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                // The habit exists!
                 const data = docSnap.data();
                 this.currentHabitStrength = data.count || 0;
                 console.log(`[MorphicNetwork] Tuned into existing field: ${fingerprint} (Strength: ${this.currentHabitStrength})`);
             } else {
-                // You are a pioneer.
                 this.currentHabitStrength = 0;
                 console.log(`[MorphicNetwork] Creating new morphic path: ${fingerprint}`);
             }
@@ -76,31 +80,43 @@ export class MorphicNetwork {
      */
     async reinforce(shapeName, params) {
         const now = Date.now();
-        // Limit updates to once every 10 seconds to save DB writes
-        if (now - this.lastReinforceTime < 10000) return;
+        
+        // THE SHIELD CHECK:
+        // 1. Are we already busy talking to the server? (isReinforcing)
+        // 2. Has it been less than 10 seconds since the last success?
+        if (this.isReinforcing || now - this.lastReinforceTime < 10000) return;
+
+        // LOCK THE DOOR
+        this.isReinforcing = true;
 
         const fingerprint = this.generateFingerprint(shapeName, params);
         const docRef = doc(this.db, "morphic_field", fingerprint);
 
         try {
-            // Atomic increment: Safe even if 100 people update at once
+            // Write to database
             await setDoc(docRef, { 
                 count: increment(1),
-                lastActive: serverTimestamp()
+                // Use serverTimestamp() to satisfy Security Rules
+                lastActive: serverTimestamp() 
             }, { merge: true });
             
+            // Success! Update local state
             this.currentHabitStrength++;
             this.lastReinforceTime = now;
             console.log(`[MorphicNetwork] Reinforced field: ${fingerprint}`);
+            
         } catch (error) {
+            // If it fails (e.g., rate limit), log it but don't crash
             console.error("[MorphicNetwork] Failed to reinforce:", error);
+        } finally {
+            // UNLOCK THE DOOR (Always runs, whether success or fail)
+            this.isReinforcing = false;
         }
     }
 
     /**
      * Returns the "Gravity" of the current habit.
      * We use a log scale so 1 million users don't break the physics.
-     * Formula: 0.05 boost for every order of magnitude.
      */
     getResonanceBoost() {
         if (this.currentHabitStrength <= 1) return 0;
