@@ -1,5 +1,5 @@
 /**
- * Swarm Module
+ * Swarm Module updated
  * Main particle system for the morphic field visualization
  * Single Responsibility: Particle physics simulation and rendering
  */
@@ -272,3 +272,4 @@ export class Swarm {
         this.mesh.material.dispose();
     }
 }
+
