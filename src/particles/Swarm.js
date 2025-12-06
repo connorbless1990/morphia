@@ -20,6 +20,15 @@ export class Swarm {
         this.vel = new Float32Array(this.count * 3);
         this.target = new Float32Array(this.count * 3);
 
+        // IMPLANT: Session Flavor
+        // A unique directional bias for this specific session.
+        // This ensures that "High Chaos" looks unique every time you reload.
+        this.chaosFlavor = new THREE.Vector3(
+            (Math.random() - 0.5) * 2.0,
+            (Math.random() - 0.5) * 2.0,
+            (Math.random() - 0.5) * 2.0
+        );
+
         // Initialize with chaos
         this.architect.generateChaos(this.pos, this.count);
         this.architect.generateChaos(this.target, this.count);
@@ -69,9 +78,6 @@ export class Swarm {
 
     /**
      * Sculpt the field by modifying targets (Morphic Rewriting)
-     * @param {THREE.Vector3} point - Sculpt center
-     * @param {number} radius - Sculpt radius
-     * @param {number} strength - Sculpt strength
      */
     sculpt(point, radius, strength) {
         const rSq = radius * radius;
@@ -79,27 +85,22 @@ export class Swarm {
         for (let i = 0; i < this.count; i++) {
             const ix = i * 3, iy = i * 3 + 1, iz = i * 3 + 2;
 
-            // Check distance between particle and brush
             const dx = this.pos[ix] - point.x;
             const dy = this.pos[iy] - point.y;
             const dz = this.pos[iz] - point.z;
             const distSq = dx * dx + dy * dy + dz * dz;
 
             if (distSq < rSq) {
-                // Calculate influence falloff
                 const factor = 1 - (distSq / rSq);
 
-                // Pull TARGET towards mouse (rewrite the blueprint)
                 const tx = point.x - this.target[ix];
                 const ty = point.y - this.target[iy];
                 const tz = point.z - this.target[iz];
 
-                // Move the blueprint closer to mouse
                 this.target[ix] += tx * strength * factor;
                 this.target[iy] += ty * strength * factor;
                 this.target[iz] += tz * strength * factor;
 
-                // Add velocity to "wake up" the particle
                 this.vel[ix] += tx * strength * 0.1;
                 this.vel[iy] += ty * strength * 0.1;
                 this.vel[iz] += tz * strength * 0.1;
@@ -127,31 +128,22 @@ export class Swarm {
     }
 
     /**
-         * Update particle simulation
-         * @param {number} time - Current time
-         * @param {number} resonance - Field resonance (order)
-         * @param {number} vitality - Field vitality (chaos)
-         * @param {number} stability - Current stability
-         * @param {number} evolution - Evolution factor
-         * @param {number} breathCycle - The 0-1 breath cycle value
-         */
+     * Update particle simulation
+     */
     update(time, resonance, vitality, stability, evolution, breathCycle) {
         const dt = APP_CONFIG.DELTA_TIME;
         const breath = Math.sin(time * 0.5) * 0.1 + 1.0;
         
         // VISUAL FIX 1: Diminishing returns on stability
-        // We cap the visual effects at 1.2 (120%) so high scores don't ruin the shape
         const visualStability = Math.min(stability, 1.2);
         
-        // Color interpolation clamp (stops at 1.0)
+        // Color interpolation clamp
         const colorStability = Math.min(stability, 1.0);
 
         // Dynamic grip - high vitality weakens resonance
         const chaosDampener = 1.0 - (vitality * 0.8);
         
         // VISUAL FIX 2: Clamp the maximum attraction force
-        // Previously: (1.0 + stability) allowed infinite gravity (creating the blob)
-        // Now: We cap the gravity multiplier at 2.5x max
         const gravityCap = 1.0 + Math.min(stability, 1.5); 
         const effectiveResonance = Math.max(resonance, 0.2) * gravityCap * chaosDampener;
 
@@ -160,51 +152,38 @@ export class Swarm {
         const colorOrder = new THREE.Color(COLORS.ORDER);
         const currentColor = new THREE.Color().lerpColors(colorChaos, colorOrder, colorStability);
 
-        // Dynamic turbulence based on evolution
+        // VISUAL FIX 3: Dynamic Field Scaling
+        // As evolution (turbulence speed) increases, we lower the field scale (zoom in).
+        // This turns "fast static" into "large rolling waves" so the shape is preserved.
         const timeScale = time * (0.2 * evolution);
-        const fieldScale = 0.15;
-        const fieldStrength = 0.5 + (vitality * 2.0);
+        const fieldScale = 0.15 / (1.0 + (evolution * 0.5)); // Zooms in as chaos rises
         
-        // VISUAL FIX 3: Breath scale
-        // We allow the breath to be slightly more pronounced when stable to keep it "alive"
+        const fieldStrength = 0.5 + (vitality * 2.0);
         const breathScale = 1.0 + (breathCycle * (0.15 + (visualStability * 0.05)));
 
         for (let i = 0; i < this.count; i++) {
             const ix = i * 3, iy = i * 3 + 1, iz = i * 3 + 2;
 
-            // Apply breath to the target position (The attractor breathes)
+            // Apply breath to the target position
             let fx = (this.target[ix] * breathScale - this.pos[ix]) * effectiveResonance * 5.0;
             let fy = (this.target[iy] * breathScale - this.pos[iy]) * effectiveResonance * 5.0;
             let fz = (this.target[iz] * breathScale - this.pos[iz]) * effectiveResonance * 5.0;
 
             // Flow field (4D noise)
-            const nx = this.simplex.noise4D(
-                this.pos[ix] * fieldScale,
-                this.pos[iy] * fieldScale,
-                this.pos[iz] * fieldScale,
-                timeScale
-            );
-            const ny = this.simplex.noise4D(
-                this.pos[ix] * fieldScale,
-                this.pos[iy] * fieldScale + 100,
-                this.pos[iz] * fieldScale,
-                timeScale
-            );
-            const nz = this.simplex.noise4D(
-                this.pos[ix] * fieldScale,
-                this.pos[iy] * fieldScale + 200,
-                this.pos[iz] * fieldScale,
-                timeScale
-            );
+            const nx = this.simplex.noise4D(this.pos[ix] * fieldScale, this.pos[iy] * fieldScale, this.pos[iz] * fieldScale, timeScale);
+            const ny = this.simplex.noise4D(this.pos[ix] * fieldScale, this.pos[iy] * fieldScale + 100, this.pos[iz] * fieldScale, timeScale);
+            const nz = this.simplex.noise4D(this.pos[ix] * fieldScale, this.pos[iy] * fieldScale + 200, this.pos[iz] * fieldScale, timeScale);
 
-            fx += nx * vitality * fieldStrength;
-            fy += ny * vitality * fieldStrength;
-            fz += nz * vitality * fieldStrength;
+            // Apply Noise + Session Flavor
+            // We add the chaosFlavor to create a unique "prevailing wind" for this user
+            fx += (nx + (this.chaosFlavor.x * 0.1)) * vitality * fieldStrength;
+            fy += (ny + (this.chaosFlavor.y * 0.1)) * vitality * fieldStrength;
+            fz += (nz + (this.chaosFlavor.z * 0.1)) * vitality * fieldStrength;
 
             // Containment force
             const d2 = this.pos[ix] * this.pos[ix] +
-                    this.pos[iy] * this.pos[iy] +
-                    this.pos[iz] * this.pos[iz];
+                       this.pos[iy] * this.pos[iy] +
+                       this.pos[iz] * this.pos[iz];
 
             if (d2 > APP_CONFIG.CONTAINMENT_RADIUS_SQ) {
                 const pull = -0.01;
@@ -218,7 +197,7 @@ export class Swarm {
             this.vel[iy] += fy * dt;
             this.vel[iz] += fz * dt;
 
-            // Friction (increases with chaos)
+            // Friction
             const fric = APP_CONFIG.FRICTION_BASE - (vitality * APP_CONFIG.FRICTION_CHAOS_FACTOR);
             this.vel[ix] *= fric;
             this.vel[iy] *= fric;
@@ -229,13 +208,10 @@ export class Swarm {
             this.pos[iy] += this.vel[iy];
             this.pos[iz] += this.vel[iz];
 
-            // Update instance matrix
+            // Update instance
             this.dummy.position.set(this.pos[ix], this.pos[iy], this.pos[iz]);
             this.dummy.lookAt(this.cameraPosition);
             
-            // VISUAL FIX 4: Clamped Scale
-            // Use 'visualStability' (capped at 1.2) instead of raw 'stability'
-            // This prevents particles from becoming massive at high scores
             const s = (0.5 + (visualStability * 0.5)) * (0.8 + (breath * 0.4));
             
             this.dummy.scale.set(s, s, s);
@@ -250,7 +226,6 @@ export class Swarm {
 
     /**
      * Set camera position for billboard effect
-     * @param {THREE.Vector3} pos - Camera position
      */
     setCameraPos(pos) {
         this.cameraPosition = pos;
