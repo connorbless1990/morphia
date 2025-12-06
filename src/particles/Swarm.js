@@ -20,13 +20,13 @@ export class Swarm {
         this.vel = new Float32Array(this.count * 3);
         this.target = new Float32Array(this.count * 3);
 
-        // IMPLANT: Session Flavor
-        // A unique directional bias for this specific session.
-        // This ensures that "High Chaos" looks unique every time you reload.
-        this.chaosFlavor = new THREE.Vector3(
-            (Math.random() - 0.5) * 2.0,
-            (Math.random() - 0.5) * 2.0,
-            (Math.random() - 0.5) * 2.0
+        // UNIVERSE TELEPORTER
+        // We pick a random point in the infinite 4D noise space to start our simulation.
+        // This ensures the "terrain" of the wind is 100% unique every session.
+        this.noiseOffset = new THREE.Vector3(
+            Math.random() * 10000.0,
+            Math.random() * 10000.0,
+            Math.random() * 10000.0
         );
 
         // Initialize with chaos
@@ -78,6 +78,9 @@ export class Swarm {
 
     /**
      * Sculpt the field by modifying targets (Morphic Rewriting)
+     * @param {THREE.Vector3} point - Sculpt center
+     * @param {number} radius - Sculpt radius
+     * @param {number} strength - Sculpt strength
      */
     sculpt(point, radius, strength) {
         const rSq = radius * radius;
@@ -85,22 +88,27 @@ export class Swarm {
         for (let i = 0; i < this.count; i++) {
             const ix = i * 3, iy = i * 3 + 1, iz = i * 3 + 2;
 
+            // Check distance between particle and brush
             const dx = this.pos[ix] - point.x;
             const dy = this.pos[iy] - point.y;
             const dz = this.pos[iz] - point.z;
             const distSq = dx * dx + dy * dy + dz * dz;
 
             if (distSq < rSq) {
+                // Calculate influence falloff
                 const factor = 1 - (distSq / rSq);
 
+                // Pull TARGET towards mouse (rewrite the blueprint)
                 const tx = point.x - this.target[ix];
                 const ty = point.y - this.target[iy];
                 const tz = point.z - this.target[iz];
 
+                // Move the blueprint closer to mouse
                 this.target[ix] += tx * strength * factor;
                 this.target[iy] += ty * strength * factor;
                 this.target[iz] += tz * strength * factor;
 
+                // Add velocity to "wake up" the particle
                 this.vel[ix] += tx * strength * 0.1;
                 this.vel[iy] += ty * strength * 0.1;
                 this.vel[iz] += tz * strength * 0.1;
@@ -129,21 +137,29 @@ export class Swarm {
 
     /**
      * Update particle simulation
+     * @param {number} time - Current time
+     * @param {number} resonance - Field resonance (order)
+     * @param {number} vitality - Field vitality (chaos)
+     * @param {number} stability - Current stability
+     * @param {number} evolution - Evolution factor
+     * @param {number} breathCycle - The 0-1 breath cycle value
      */
     update(time, resonance, vitality, stability, evolution, breathCycle) {
         const dt = APP_CONFIG.DELTA_TIME;
         const breath = Math.sin(time * 0.5) * 0.1 + 1.0;
         
         // VISUAL FIX 1: Diminishing returns on stability
+        // We cap the visual effects so high scores don't ruin the shape
         const visualStability = Math.min(stability, 1.2);
         
-        // Color interpolation clamp
+        // Color interpolation clamp (stops at 1.0)
         const colorStability = Math.min(stability, 1.0);
 
         // Dynamic grip - high vitality weakens resonance
         const chaosDampener = 1.0 - (vitality * 0.8);
         
         // VISUAL FIX 2: Clamp the maximum attraction force
+        // Now: We cap the gravity multiplier at 2.5x max
         const gravityCap = 1.0 + Math.min(stability, 1.5); 
         const effectiveResonance = Math.max(resonance, 0.2) * gravityCap * chaosDampener;
 
@@ -164,21 +180,35 @@ export class Swarm {
         for (let i = 0; i < this.count; i++) {
             const ix = i * 3, iy = i * 3 + 1, iz = i * 3 + 2;
 
-            // Apply breath to the target position
+            // Apply breath to the target position (The attractor breathes)
             let fx = (this.target[ix] * breathScale - this.pos[ix]) * effectiveResonance * 5.0;
             let fy = (this.target[iy] * breathScale - this.pos[iy]) * effectiveResonance * 5.0;
             let fz = (this.target[iz] * breathScale - this.pos[iz]) * effectiveResonance * 5.0;
 
-            // Flow field (4D noise)
-            const nx = this.simplex.noise4D(this.pos[ix] * fieldScale, this.pos[iy] * fieldScale, this.pos[iz] * fieldScale, timeScale);
-            const ny = this.simplex.noise4D(this.pos[ix] * fieldScale, this.pos[iy] * fieldScale + 100, this.pos[iz] * fieldScale, timeScale);
-            const nz = this.simplex.noise4D(this.pos[ix] * fieldScale, this.pos[iy] * fieldScale + 200, this.pos[iz] * fieldScale, timeScale);
+            // Flow field (4D noise) with TELEPORTATION
+            // We add the massive noiseOffset to every coordinate lookup
+            const nx = this.simplex.noise4D(
+                (this.pos[ix] * fieldScale) + this.noiseOffset.x, 
+                (this.pos[iy] * fieldScale) + this.noiseOffset.y, 
+                (this.pos[iz] * fieldScale) + this.noiseOffset.z, 
+                timeScale
+            );
+            const ny = this.simplex.noise4D(
+                (this.pos[ix] * fieldScale) + this.noiseOffset.x + 100,
+                (this.pos[iy] * fieldScale) + this.noiseOffset.y + 100,
+                (this.pos[iz] * fieldScale) + this.noiseOffset.z + 100,
+                timeScale
+            );
+            const nz = this.simplex.noise4D(
+                (this.pos[ix] * fieldScale) + this.noiseOffset.x + 200,
+                (this.pos[iy] * fieldScale) + this.noiseOffset.y + 200,
+                (this.pos[iz] * fieldScale) + this.noiseOffset.z + 200,
+                timeScale
+            );
 
-            // Apply Noise + Session Flavor
-            // We add the chaosFlavor to create a unique "prevailing wind" for this user
-            fx += (nx + (this.chaosFlavor.x * 0.1)) * vitality * fieldStrength;
-            fy += (ny + (this.chaosFlavor.y * 0.1)) * vitality * fieldStrength;
-            fz += (nz + (this.chaosFlavor.z * 0.1)) * vitality * fieldStrength;
+            fx += nx * vitality * fieldStrength;
+            fy += ny * vitality * fieldStrength;
+            fz += nz * vitality * fieldStrength;
 
             // Containment force
             const d2 = this.pos[ix] * this.pos[ix] +
@@ -197,7 +227,7 @@ export class Swarm {
             this.vel[iy] += fy * dt;
             this.vel[iz] += fz * dt;
 
-            // Friction
+            // Friction (increases with chaos)
             const fric = APP_CONFIG.FRICTION_BASE - (vitality * APP_CONFIG.FRICTION_CHAOS_FACTOR);
             this.vel[ix] *= fric;
             this.vel[iy] *= fric;
@@ -208,10 +238,11 @@ export class Swarm {
             this.pos[iy] += this.vel[iy];
             this.pos[iz] += this.vel[iz];
 
-            // Update instance
+            // Update instance matrix
             this.dummy.position.set(this.pos[ix], this.pos[iy], this.pos[iz]);
             this.dummy.lookAt(this.cameraPosition);
             
+            // Scale clamped by visualStability
             const s = (0.5 + (visualStability * 0.5)) * (0.8 + (breath * 0.4));
             
             this.dummy.scale.set(s, s, s);
@@ -226,6 +257,7 @@ export class Swarm {
 
     /**
      * Set camera position for billboard effect
+     * @param {THREE.Vector3} pos - Camera position
      */
     setCameraPos(pos) {
         this.cameraPosition = pos;
