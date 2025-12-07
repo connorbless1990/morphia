@@ -59,5 +59,20 @@ export function togglePanel(id) {
     }
 }
 
+// Add a debounce helper at the top or import it
+/**
+ * Debounce function to limit how often a function can fire
+ * @param {*} func function to debounce
+ * @param {*} wait wait time in ms
+ * @returns 
+ */
+export function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
 // Expose togglePanel globally for inline HTML onclick handlers
 window.togglePanel = togglePanel;

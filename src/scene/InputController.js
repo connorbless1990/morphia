@@ -30,8 +30,10 @@ export class InputController {
 
         // Current mode
         this.mode = MODES.CLASSIC;
-
         this.setupEventListeners();
+
+        this.initialPinchDistance = null;
+        this.initialZoom = 0;
     }
 
     /**
@@ -83,7 +85,17 @@ export class InputController {
      */
     handleTouchStart(e) {
         e.preventDefault();
-        this.handleStart(e.touches[0].clientX, e.touches[0].clientY, false);
+        if (e.touches.length === 2) {
+            // Start Pinch
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            this.initialPinchDistance = Math.sqrt(dx * dx + dy * dy);
+            // Assuming SceneManager exposes radius, or we use a getter
+            this.initialZoom = this.sceneManager.radius; 
+        } else {
+            // Start Drag
+            this.handleStart(e.touches[0].clientX, e.touches[0].clientY, false);
+        }
     }
 
     /**
@@ -140,6 +152,27 @@ export class InputController {
         if (e.target === this.container) {
             e.preventDefault();
         }
+        // Handle Pinch
+        if (e.touches.length === 2 && this.initialPinchDistance) {
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const currentDistance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Calculate delta
+            const diff = this.initialPinchDistance - currentDistance;
+            
+            // Sensitivity factor
+            const zoomSpeed = 0.1; 
+            
+            // Call scene manager zoom (reusing your existing wheel logic method essentially)
+            this.sceneManager.zoom(diff * zoomSpeed);
+            
+            // Update for next frame to keep it smooth
+            this.initialPinchDistance = currentDistance;
+            return;
+        }
+
+        // Handle Drag
         if (this.isDragging) {
             this.handleMove(e.touches[0].clientX, e.touches[0].clientY);
         }
