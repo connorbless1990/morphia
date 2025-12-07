@@ -11,6 +11,14 @@ export class SilentAudioBridge {
         this.audio.src = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTSVMAAAAPAAADTGF2ZjU4LjIwLjEwMAAAAAAAAAAAAAAA//oeAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//////////////////////////////////wAAADFMYXZjNTguMzUAAAAAAAAAAAAAAAAAAAAAAAC0AAAAAAAAAAAB//oeRn+ABAAAAAARAAAAAAKAAAAAAAAAAAAAA//oeRn+ABAAAAAARAAAAAAKAAAAAAAAAAAAAA//oeRn+ABAAAAAARAAAAAAKAAAAAAAAAAAAAA//oeRn+ABAAAAAARAAAAAAKAAAAAAAAAAAAAA//oeRn+ABAAAAAARAAAAAAKAAAAAAAAAAAAAA";
         this.audio.loop = true;
         this.audio.volume = 0.01;
+        
+        // --- MOBILE AUDIO FIXES ---
+        // Required for iOS/Safari to treat this as background audio
+        this.audio.setAttribute('playsinline', ''); 
+        this.audio.setAttribute('webkit-playsinline', '');
+        this.audio.preload = 'auto';
+        // --------------------------
+
         document.body.appendChild(this.audio);
     }
 

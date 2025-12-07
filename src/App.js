@@ -1,13 +1,6 @@
 /**
  * MORPHIA - Morphic Field Visualizer
  * Main Application Entry Point (Composition Root)
- *
- * Follows SOLID principles:
- * - Single Responsibility: App class only orchestrates, doesn't implement details
- * - Open/Closed: New features added via new modules, not modifying App
- * - Liskov Substitution: All modules are interchangeable via interfaces
- * - Interface Segregation: Small, focused interfaces per module
- * - Dependency Inversion: High-level App depends on abstractions (modules)
  */
 
 import { APP_CONFIG, MODES } from './config/constants.js';
@@ -82,14 +75,15 @@ export class App {
             this.network.tuneIn(shape, params);
         });
 
+        // --- FIX: DEBOUNCE LOGIC ---
         // Create a debounced version of the network call
         const debouncedTuneIn = debounce((shape, params) => {
             this.network.tuneIn(shape, params);
         }, 500); // Wait 500ms after last movement
 
         // Parameter change
-        // 2. When Sliders Move -> Check the Cloud (Debounced ideally, but direct is ok for now)
         eventBus.on(EVENTS.PARAM_CHANGED, ({ key, value }) => {
+            // 1. Physics update (IMMEDIATE - no lag)
             if (key === 'evolution' && this.uiController.getMode() === MODES.CLASSIC) {
                 const shape = this.uiController.getCurrentShape() || 'scatter';
                 this.swarm.setShape(shape, value);
@@ -98,12 +92,13 @@ export class App {
             } else {
                 this.brain.stress(0.05);
             }
+            
+            // 2. Network update (DEBOUNCED - prevents freezing)
             const params = this.uiController.getParams();
-            // Optional: Only tuneIn if they stop dragging for 1s. 
-            // For now, let's just update periodically or on mouseUp (if UI supports it).
-            // Or simpler: Just update the local params, and let the 'reinforce' loop handle the key gen.
-            this.network.tuneIn(this.uiController.getCurrentShape(), params);
+            // We use the debounced function here instead of the direct call
+            debouncedTuneIn(this.uiController.getCurrentShape(), params);
         });
+        // ---------------------------
 
         // Disrupt (explosion)
         eventBus.on(EVENTS.DISRUPT, () => {
@@ -128,11 +123,6 @@ export class App {
         const time = performance.now() * 0.001;
         
         // IMPLANT: Biological Irregularity (Simulated HRV)
-        // Instead of a perfect metronome, we warp time slightly using noise.
-        // This creates "drift" - the breath cycle will naturally speed up and slow down
-        // just like a real living organism.
-        // noise factor 0.05 = very slow change (approx every 20 seconds)
-        // magnitude 1.5 = pulls the time forward/backward by up to 1.5 seconds
         const bioDrift = this.simplex.noise2D(time * 0.05, 42) * 1.5;
         const biologicalTime = time + bioDrift;
 
@@ -145,7 +135,6 @@ export class App {
         // GET THE GLOBAL HABIT STRENGTH
         const morphicBoost = this.network.getResonanceBoost();
         // Pass the boost to the Brain and Swarm
-        // We add the boost to the base resonance
         const effectiveResonance = params.resonance + morphicBoost;
 
         // Update intersection for sculpting
@@ -174,14 +163,12 @@ export class App {
         this.ether.update(time, params.vitality);
 
         // REINFORCEMENT LOOP
-        // If the user is holding the field stable (> 0.5) for a while, 
-        // they contribute to the global memory.
         if (stability > 0.5 && mode === MODES.CLASSIC) {
             const shape = this.uiController.getCurrentShape();
             this.network.reinforce(shape, params);
        }
 
-        // Update audio (Audio stays synced to the organic irregularity)
+        // Update audio
         this.audio.update(stability, params.vitality, breathCycle);
 
         // Render
