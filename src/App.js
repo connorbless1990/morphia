@@ -18,6 +18,7 @@ import { SceneManager, InputController } from './scene/index.js';
 import { Swarm, Ether, GhostField } from './particles/index.js';
 import { UIController } from './ui/index.js';
 import { MorphicNetwork } from './network/morphicNetwork.js';
+import { debounce } from './utils/helpers.js';
 
 export class App {
     constructor() {
@@ -80,6 +81,11 @@ export class App {
             const params = this.uiController.getParams();
             this.network.tuneIn(shape, params);
         });
+
+        // Create a debounced version of the network call
+        const debouncedTuneIn = debounce((shape, params) => {
+            this.network.tuneIn(shape, params);
+        }, 500); // Wait 500ms after last movement
 
         // Parameter change
         // 2. When Sliders Move -> Check the Cloud (Debounced ideally, but direct is ok for now)

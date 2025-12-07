@@ -4,9 +4,12 @@
  * Follows Open/Closed Principle - extend via new constants, don't modify existing
  */
 
+// Detect mobile roughly
+const isMobile = window.innerWidth < 768;
+
 export const APP_CONFIG = {
     // Particle counts
-    SWARM_PARTICLE_COUNT: 24000,
+    SWARM_PARTICLE_COUNT: isMobile ? 8000 : 24000,
     ETHER_PARTICLE_COUNT: 2000,
 
     // Physics
