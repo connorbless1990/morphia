@@ -21,8 +21,6 @@ export class Swarm {
         this.target = new Float32Array(this.count * 3);
 
         // UNIVERSE TELEPORTER
-        // We pick a random point in the infinite 4D noise space to start our simulation.
-        // This ensures the "terrain" of the wind is 100% unique every session.
         this.noiseOffset = new THREE.Vector3(
             Math.random() * 10000.0,
             Math.random() * 10000.0,
@@ -38,6 +36,11 @@ export class Swarm {
 
         // Camera position for billboard effect
         this.cameraPosition = new THREE.Vector3(0, 0, 10);
+
+        // --- PERFORMANCE FIX: OBJECT POOLING ---
+        // Pre-allocate a scratch vector to reuse every frame
+        // This prevents creating 24,000 new objects per frame (Garbage Collection stutter)
+        this._curlScratch = new THREE.Vector3(); 
     }
 
     /**
@@ -136,9 +139,8 @@ export class Swarm {
     }
 
     /**
-     * CALCULATE CURL (VORTICITY)
-     * Instead of getting the noise value (density), we get the rate of change (slope)
-     * and rotate it to find the direction of the flow.
+     * CALCULATE CURL (Optimized)
+     * Writes result to this._curlScratch instead of creating new objects
      */
     computeCurl(x, y, z, time) {
         const eps = 0.1; // Epsilon (distance to sample neighbor)
@@ -159,19 +161,12 @@ export class Swarm {
         const n6 = this.simplex.noise4D(x - eps, y, z, time); 
         const c = (n5 - n6) / (2 * eps);
 
-        // Curl = (dy/dz - dz/dy, dz/dx - dx/dz, dx/dy - dy/dx)
-        // This is the cross product equivalent that creates "Spin"
-        return new THREE.Vector3(a - b, b - c, c - a);
+        // WRITE TO SCRATCH VECTOR INSTEAD OF RETURNING NEW
+        this._curlScratch.set(a - b, b - c, c - a);
     }
 
     /**
      * Update particle simulation
-     * @param {number} time - Current time
-     * @param {number} resonance - Field resonance (order)
-     * @param {number} vitality - Field vitality (chaos)
-     * @param {number} stability - Current stability
-     * @param {number} evolution - Evolution factor
-     * @param {number} breathCycle - The 0-1 breath cycle value
      */
     update(time, resonance, vitality, stability, evolution, breathCycle) {
         const dt = APP_CONFIG.DELTA_TIME;
@@ -196,7 +191,6 @@ export class Swarm {
         const currentColor = new THREE.Color().lerpColors(colorChaos, colorOrder, colorStability);
 
         // VISUAL FIX 3: Dynamic Field Scaling (Zoom In)
-        // As evolution increases, we lower the field scale to keep structures large
         const timeScale = time * (0.2 * evolution);
         const fieldScale = 0.15 / (1.0 + (evolution * 0.5)); 
         
@@ -207,24 +201,23 @@ export class Swarm {
             const ix = i * 3, iy = i * 3 + 1, iz = i * 3 + 2;
 
             // 1. ATTRACTION (The Blueprint)
-            // Apply breath to the target position
             let fx = (this.target[ix] * breathScale - this.pos[ix]) * effectiveResonance * 5.0;
             let fy = (this.target[iy] * breathScale - this.pos[iy]) * effectiveResonance * 5.0;
             let fz = (this.target[iz] * breathScale - this.pos[iz]) * effectiveResonance * 5.0;
 
             // 2. VORTICITY (The Natural Flow)
-            // Calculate Curl Noise instead of Standard Noise
-            const curl = this.computeCurl(
+            // This updates this._curlScratch directly
+            this.computeCurl(
                 (this.pos[ix] * fieldScale) + this.noiseOffset.x, 
                 (this.pos[iy] * fieldScale) + this.noiseOffset.y, 
                 (this.pos[iz] * fieldScale) + this.noiseOffset.z, 
                 timeScale
             );
 
-            // Apply the curl as the chaotic force
-            fx += curl.x * vitality * fieldStrength;
-            fy += curl.y * vitality * fieldStrength;
-            fz += curl.z * vitality * fieldStrength;
+            // Apply the curl using the scratch vector
+            fx += this._curlScratch.x * vitality * fieldStrength;
+            fy += this._curlScratch.y * vitality * fieldStrength;
+            fz += this._curlScratch.z * vitality * fieldStrength;
 
             // Containment force
             const d2 = this.pos[ix] * this.pos[ix] +

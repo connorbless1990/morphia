@@ -175,7 +175,7 @@ export class InputController {
         // Handle Drag
         if (this.isDragging) {
             this.handleMove(e.touches[0].clientX, e.touches[0].clientY);
-        }
+        }x
     }
 
     /**
