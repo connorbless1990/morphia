@@ -96,15 +96,21 @@ export class App {
         const params = this.uiController.getParams();
         const mode = this.uiController.getMode();
         const morphicBoost = this.network.getResonanceBoost();
-        const effectiveResonance = params.resonance + morphicBoost;
+        
+        // --- PHYSICS TUNING FOR MODES ---
+        let effectiveResonance = params.resonance + morphicBoost;
+        
+        if (mode === MODES.EXPERIMENTAL) {
+            // FIX: Drastically reduce homing force in Quantum Mode ONLY
+            // This stops particles from "snapping back" so you can coalesce them.
+            effectiveResonance *= 0.05; 
+        }
+        // --------------------------------
 
         this.inputController.updateIntersection();
 
-        // --- INTERACTION LOGIC ---
         if (mode === MODES.EXPERIMENTAL) {
             const sculptParams = this.inputController.getSculptParams();
-            
-            // We pass the whole object (or null) to Swarm
             // Swarm handles the "reset" internally if params is null
             this.swarm.sculpt(sculptParams);
 
@@ -112,7 +118,6 @@ export class App {
                 this.brain.setStability(Math.min(1.0, this.brain.getStability() + 0.002));
             }
         }
-        // -------------------------
 
         const stability = this.brain.update(time, effectiveResonance, params.vitality);
         this.swarm.update(time, effectiveResonance, params.vitality, stability, params.evolution, breathCycle);
