@@ -112,6 +112,13 @@ uniform float uResonance;
 uniform float uVitality;
 uniform sampler2D textureTarget;
 
+// --- INTERACTION UNIFORMS ---
+uniform vec3 uMousePos;
+uniform float uMouseRadius;
+uniform float uMouseStrength;
+uniform int uMouseType; 
+uniform vec3 uMouseVel;
+
 ${curlNoise}
 
 void main() {
@@ -120,18 +127,41 @@ void main() {
     vec3 vel = texture2D( textureVelocity, uv ).xyz;
     vec3 target = texture2D( textureTarget, uv ).xyz;
 
+    // 1. BASE ATTRACTION
     vec3 attraction = target - pos;
     float dist = length(attraction);
-    
-    // Slight increase in resonance force for sharper shapes
+    // Standard resonance force for keeping shape
     vec3 forceOrder = normalize(attraction + 0.001) * dist * uResonance * 3.0;
 
+    // 2. CHAOS
     vec3 noisePos = pos * 0.15; 
     noisePos += vec3(uTime * 0.2);
-    
     vec3 forceChaos = curlNoise(noisePos) * uVitality * 2.0;
 
-    vec3 acc = forceOrder + forceChaos;
+    // 3. USER INTERACTION
+    vec3 forceInteract = vec3(0.0);
+    
+    if (uMouseType > 0) {
+        float dMouse = distance(pos, uMousePos);
+        
+        if (dMouse < uMouseRadius) {
+            float influence = 1.0 - (dMouse / uMouseRadius); 
+            
+            if (uMouseType == 1) {
+                // GRAVITY WELL (Right Click): Reduced force 100.0 -> 30.0
+                vec3 dir = normalize(uMousePos - pos);
+                forceInteract += dir * uMouseStrength * influence * 30.0;
+            } 
+            else if (uMouseType == 2) {
+                // FLOW (Left Click): Reduced force 300.0 -> 60.0
+                // Gentle stirring instead of blasting
+                forceInteract += uMouseVel * uMouseStrength * influence * 60.0;
+            }
+        }
+    }
+
+    // 4. INTEGRATION
+    vec3 acc = forceOrder + forceChaos + forceInteract;
     float friction = 0.9 - (uVitality * 0.05);
     
     vel += acc * 0.016;
@@ -172,21 +202,19 @@ void main() {
 
 // 6. Render Fragment Shader
 export const renderFragmentShader = `
-uniform vec3 uColorChaos; // Expecting Red (0xff4400)
-uniform vec3 uColorOrder; // Expecting Cyan (0x00ffff)
-uniform float uStability; // 0.0 = Chaos, 1.0 = Order
+uniform vec3 uColorChaos;
+uniform vec3 uColorOrder;
+uniform float uStability;
 
 void main() {
-    // Soft circle shape
     vec2 cxy = 2.0 * gl_PointCoord - 1.0;
     float r = dot(cxy, cxy);
     if (r > 1.0) discard;
 
-    // DYNAMIC COLOR MIXING
-    // This was the missing link. Now it reacts to the field state.
+    // COLOR RESTORED: Uses Stability to shift Red -> Blue
     vec3 finalColor = mix(uColorChaos, uColorOrder, uStability);
     
-    // Low opacity for additive blending "dust" look
+    // VISUAL FIX: Low opacity (0.12) to prevent white blob
     float alpha = (1.0 - r) * 0.12;
 
     gl_FragColor = vec4( finalColor, alpha );
