@@ -8,7 +8,7 @@ import { eventBus, EVENTS } from './utils/eventBus.js';
 import { AudioCore } from './audio/index.js';
 import { MorphicBrain } from './simulation/MorphicBrain.js';
 import { SceneManager, InputController } from './scene/index.js';
-import { Swarm, Ether, GhostField } from './particles/index.js';
+import { Swarm, Ether, GhostField } from './particles/index.js'; // Swarm is now the GPUSwarm
 import { UIController } from './ui/index.js';
 import { MorphicNetwork } from './network/morphicNetwork.js';
 import { debounce } from './utils/helpers.js';
@@ -17,7 +17,7 @@ export class App {
     constructor() {
         // Get simplex noise from global (loaded via CDN)
         this.simplex = new SimplexNoise();
-        this.network = new MorphicNetwork(); // Initialize the link to the morphic field
+        this.network = new MorphicNetwork(); 
 
         // Initialize core systems
         this.audio = new AudioCore();
@@ -28,45 +28,35 @@ export class App {
 
         // Initialize particle systems
         const scene = this.sceneManager.getScene();
+        const renderer = this.sceneManager.getRenderer(); // Need this for GPGPU
+
         this.ghost = new GhostField(scene);
-        this.swarm = new Swarm(scene, this.simplex);
+        
+        // PASS RENDERER TO SWARM
+        this.swarm = new Swarm(scene, this.simplex, APP_CONFIG.SWARM_PARTICLE_COUNT);
+        this.swarm.initGPGPU(renderer); // Explicit init
+
         this.ether = new Ether(scene, this.simplex);
 
-        // Setup event handlers
         this.setupEventHandlers();
-
-        // Start animation loop
         this.animate = this.animate.bind(this);
         this.animate();
     }
 
-    /**
-     * Setup event bus handlers
-     * @private
-     */
+    // ... (Keep setupEventHandlers exactly as in previous step, ensuring debounce is there) ...
     setupEventHandlers() {
         // Mode change
         eventBus.on(EVENTS.MODE_CHANGED, (mode) => {
             this.inputController.setMode(mode);
-
             if (mode === MODES.EXPERIMENTAL) {
                 this.swarm.scramble();
                 this.ghost.setVisible(false);
             }
         });
 
-        // Audio unlock
-        eventBus.on(EVENTS.AUDIO_UNLOCKED, () => {
-            this.audio.unlock();
-        });
+        eventBus.on(EVENTS.AUDIO_UNLOCKED, () => this.audio.unlock());
+        eventBus.on(EVENTS.AUDIO_TOGGLE, (cb) => cb && cb(this.audio.toggle()));
 
-        // Audio toggle
-        eventBus.on(EVENTS.AUDIO_TOGGLE, (callback) => {
-            const isOn = this.audio.toggle();
-            if (callback) callback(isOn);
-        });
-
-        // Shape change
         eventBus.on(EVENTS.SHAPE_CHANGED, ({ shape, evolution }) => {
             this.swarm.setShape(shape, evolution);
             this.ghost.updateShape(shape, evolution);
@@ -75,15 +65,11 @@ export class App {
             this.network.tuneIn(shape, params);
         });
 
-        // --- FIX: DEBOUNCE LOGIC ---
-        // Create a debounced version of the network call
         const debouncedTuneIn = debounce((shape, params) => {
             this.network.tuneIn(shape, params);
-        }, 500); // Wait 500ms after last movement
+        }, 500);
 
-        // Parameter change
         eventBus.on(EVENTS.PARAM_CHANGED, ({ key, value }) => {
-            // 1. Physics update (IMMEDIATE - no lag)
             if (key === 'evolution' && this.uiController.getMode() === MODES.CLASSIC) {
                 const shape = this.uiController.getCurrentShape() || 'scatter';
                 this.swarm.setShape(shape, value);
@@ -92,92 +78,63 @@ export class App {
             } else {
                 this.brain.stress(0.05);
             }
-            
-            // 2. Network update (DEBOUNCED - prevents freezing)
             const params = this.uiController.getParams();
-            // We use the debounced function here instead of the direct call
             debouncedTuneIn(this.uiController.getCurrentShape(), params);
         });
-        // ---------------------------
 
-        // Disrupt (explosion)
         eventBus.on(EVENTS.DISRUPT, () => {
             this.brain.trauma();
             this.swarm.explode();
         });
 
-        // Reset (experimental mode)
         eventBus.on(EVENTS.RESET, () => {
             this.swarm.scramble();
             this.brain.trauma();
         });
     }
 
-    /**
-     * Main animation loop
-     * @private
-     */
     animate() {
         requestAnimationFrame(this.animate);
 
         const time = performance.now() * 0.001;
-        
-        // IMPLANT: Biological Irregularity (Simulated HRV)
         const bioDrift = this.simplex.noise2D(time * 0.05, 42) * 1.5;
         const biologicalTime = time + bioDrift;
-
-        // Coherent Breathing (11s cycle modulated by bioDrift)
         const breathCycle = (Math.sin(biologicalTime * (Math.PI * 2 / 11)) + 1) / 2;
         
         const params = this.uiController.getParams();
         const mode = this.uiController.getMode();
-
-        // GET THE GLOBAL HABIT STRENGTH
         const morphicBoost = this.network.getResonanceBoost();
-        // Pass the boost to the Brain and Swarm
         const effectiveResonance = params.resonance + morphicBoost;
 
-        // Update intersection for sculpting
         this.inputController.updateIntersection();
 
-        // Handle sculpting in experimental mode
+        // GPGPU Sculpting is usually harder, we might skip it for MVP or implement simple uniforms later
         if (mode === MODES.EXPERIMENTAL) {
             const sculptParams = this.inputController.getSculptParams();
             if (sculptParams) {
                 this.swarm.sculpt(sculptParams.point, sculptParams.radius, sculptParams.strength);
-
-                // Boost stability during precision sculpting
                 if (this.inputController.isPrecisionSculpting()) {
                     this.brain.setStability(Math.min(1.0, this.brain.getStability() + 0.002));
                 }
             }
         }
 
-        // Update systems
         const stability = this.brain.update(time, effectiveResonance, params.vitality);
-        this.swarm.setCameraPos(this.sceneManager.getCamera().position);
         
-        // Pass the new organic breathCycle
+        // Update Swarm with GPGPU logic
         this.swarm.update(time, effectiveResonance, params.vitality, stability, params.evolution, breathCycle);
         
         this.ether.update(time, params.vitality);
 
-        // REINFORCEMENT LOOP
         if (stability > 0.5 && mode === MODES.CLASSIC) {
             const shape = this.uiController.getCurrentShape();
             this.network.reinforce(shape, params);
        }
 
-        // Update audio
         this.audio.update(stability, params.vitality, breathCycle);
-
-        // Render
         this.sceneManager.render();
     }
 
-    /**
-     * Cleanup resources
-     */
     dispose() {
         this.audio.dispose();
         this.swarm.dispose();
@@ -187,7 +144,7 @@ export class App {
     }
 }
 
-// Auto-start when DOM is ready
+// Auto-start
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => new App());
 } else {
