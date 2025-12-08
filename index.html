@@ -13,6 +13,7 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="./src/styles/main.css">
+    <link rel="icon" href="data:,"> 
 </head>
 <body>
     <div id="overlay">
@@ -41,7 +42,26 @@
         <div class="glass-panel max-w-2xl w-full p-6 md:p-10 relative m-4 max-h-[90vh] overflow-y-auto">
             <button id="close-info" class="absolute top-4 right-4 text-green-700 hover:text-green-400 text-xl font-bold">&times;</button>
             <h2 class="text-2xl text-green-400 font-bold mb-6 tracking-widest border-b border-green-900/50 pb-4">SYSTEM MANUAL</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-sm text-green-300 font-bold mb-2 uppercase tracking-wider">Platonic Mode</h3>
+                    <p class="text-[11px] text-gray-400 leading-relaxed mb-4">A passive visualization of Sheldrake's Morphic Resonance.</p>
+                    <ul class="text-[10px] text-green-600 space-y-2 list-disc pl-4">
+                        <li><span class="text-green-400">Resonance:</span> The strength of the field (Order).</li>
+                        <li><span class="text-blue-400">Vitality:</span> The energy of the particles (Chaos).</li>
+                        <li><span class="text-yellow-500">Evolution:</span> Warps the sacred geometry.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-sm text-yellow-300 font-bold mb-2 uppercase tracking-wider">Quantum Mode</h3>
+                    <p class="text-[11px] text-gray-400 leading-relaxed mb-4">An active visualization of Sheldrake's Morphic Resonance.</p>
+                    <ul class="text-[10px] text-yellow-600 space-y-2 list-disc pl-4">
+                        <li><span class="text-yellow-400">Drag:</span> Creates gravity.</li>
+                        <li><span class="text-yellow-400">Volumetric Brush:</span> Move very slowly for dense clouds.</li>
+                    </ul>
+                </div>
             </div>
+        </div>
     </div>
 
     <div id="canvas-container"></div>

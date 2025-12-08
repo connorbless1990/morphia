@@ -8,33 +8,28 @@ import { eventBus, EVENTS } from './utils/eventBus.js';
 import { AudioCore } from './audio/index.js';
 import { MorphicBrain } from './simulation/MorphicBrain.js';
 import { SceneManager, InputController } from './scene/index.js';
-import { Swarm, Ether, GhostField } from './particles/index.js'; // Swarm is now the GPUSwarm
+import { Swarm, Ether, GhostField } from './particles/index.js';
 import { UIController } from './ui/index.js';
 import { MorphicNetwork } from './network/morphicNetwork.js';
 import { debounce } from './utils/helpers.js';
 
 export class App {
     constructor() {
-        // Get simplex noise from global (loaded via CDN)
         this.simplex = new SimplexNoise();
         this.network = new MorphicNetwork(); 
 
-        // Initialize core systems
         this.audio = new AudioCore();
         this.brain = new MorphicBrain();
         this.sceneManager = new SceneManager();
         this.inputController = new InputController(this.sceneManager);
         this.uiController = new UIController();
 
-        // Initialize particle systems
         const scene = this.sceneManager.getScene();
-        const renderer = this.sceneManager.getRenderer(); // Need this for GPGPU
+        const renderer = this.sceneManager.getRenderer(); // Required for GPGPU
 
         this.ghost = new GhostField(scene);
-        
-        // PASS RENDERER TO SWARM
-        this.swarm = new Swarm(scene, this.simplex, APP_CONFIG.SWARM_PARTICLE_COUNT);
-        this.swarm.initGPGPU(renderer); // Explicit init
+        this.swarm = new Swarm(scene, this.simplex);
+        this.swarm.initGPGPU(renderer); // <--- THIS MATCHES THE NEW SWARM CLASS
 
         this.ether = new Ether(scene, this.simplex);
 
@@ -43,9 +38,7 @@ export class App {
         this.animate();
     }
 
-    // ... (Keep setupEventHandlers exactly as in previous step, ensuring debounce is there) ...
     setupEventHandlers() {
-        // Mode change
         eventBus.on(EVENTS.MODE_CHANGED, (mode) => {
             this.inputController.setMode(mode);
             if (mode === MODES.EXPERIMENTAL) {
@@ -65,6 +58,7 @@ export class App {
             this.network.tuneIn(shape, params);
         });
 
+        // Network Debounce Fix
         const debouncedTuneIn = debounce((shape, params) => {
             this.network.tuneIn(shape, params);
         }, 500);
@@ -95,7 +89,6 @@ export class App {
 
     animate() {
         requestAnimationFrame(this.animate);
-
         const time = performance.now() * 0.001;
         const bioDrift = this.simplex.noise2D(time * 0.05, 42) * 1.5;
         const biologicalTime = time + bioDrift;
@@ -108,7 +101,6 @@ export class App {
 
         this.inputController.updateIntersection();
 
-        // GPGPU Sculpting is usually harder, we might skip it for MVP or implement simple uniforms later
         if (mode === MODES.EXPERIMENTAL) {
             const sculptParams = this.inputController.getSculptParams();
             if (sculptParams) {
@@ -120,10 +112,7 @@ export class App {
         }
 
         const stability = this.brain.update(time, effectiveResonance, params.vitality);
-        
-        // Update Swarm with GPGPU logic
         this.swarm.update(time, effectiveResonance, params.vitality, stability, params.evolution, breathCycle);
-        
         this.ether.update(time, params.vitality);
 
         if (stability > 0.5 && mode === MODES.CLASSIC) {

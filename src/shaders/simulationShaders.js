@@ -3,7 +3,7 @@
  * GLSL code for GPGPU physics
  */
 
-// 1. Helper: Simplex Noise in GLSL (Standard implementation)
+// 1. Helper: Simplex Noise in GLSL
 const simplexNoise3D = `
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -14,40 +14,31 @@ float snoise(vec3 v) {
   const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
   const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
 
-  // First corner
   vec3 i  = floor(v + dot(v, C.yyy) );
   vec3 x0 = v - i + dot(i, C.xxx) ;
 
-  // Other corners
   vec3 g = step(x0.yzx, x0.xyz);
   vec3 l = 1.0 - g;
   vec3 i1 = min( g.xyz, l.zxy );
   vec3 i2 = max( g.xyz, l.zxy );
 
-  //   x0 = x0 - 0.0 + 0.0 * C.xxx;
-  //   x1 = x0 - i1  + 1.0 * C.xxx;
-  //   x2 = x0 - i2  + 2.0 * C.xxx;
-  //   x3 = x0 - 1.0 + 3.0 * C.xxx;
   vec3 x1 = x0 - i1 + C.xxx;
-  vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
-  vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
+  vec3 x2 = x0 - i2 + C.yyy;
+  vec3 x3 = x0 - D.yyy;
 
-  // Permutations
   i = mod289(i); 
   vec4 p = permute( permute( permute( 
              i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
            + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
            + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
 
-  // Gradients: 7x7 points over a square, mapped onto an octahedron.
-  // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
-  float n_ = 0.142857142857; // 1.0/7.0
+  float n_ = 0.142857142857; 
   vec3  ns = n_ * D.wyz - D.xzx;
 
-  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
+  vec4 j = p - 49.0 * floor(p * ns.z * ns.z); 
 
   vec4 x_ = floor(j * ns.z);
-  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+  vec4 y_ = floor(j - 7.0 * x_ );
 
   vec4 x = x_ *ns.x + ns.yyyy;
   vec4 y = y_ *ns.x + ns.yyyy;
@@ -56,8 +47,6 @@ float snoise(vec3 v) {
   vec4 b0 = vec4( x.xy, y.xy );
   vec4 b1 = vec4( x.zw, y.zw );
 
-  //vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;
-  //vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;
   vec4 s0 = floor(b0)*2.0 + 1.0;
   vec4 s1 = floor(b1)*2.0 + 1.0;
   vec4 sh = -step(h, vec4(0.0));
@@ -70,14 +59,12 @@ float snoise(vec3 v) {
   vec3 p2 = vec3(a1.xy,h.z);
   vec3 p3 = vec3(a1.zw,h.w);
 
-  //Normalise gradients
   vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
   p0 *= norm.x;
   p1 *= norm.y;
   p2 *= norm.z;
   p3 *= norm.w;
 
-  // Mix final noise value
   vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
   m = m * m;
   return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
@@ -85,7 +72,7 @@ float snoise(vec3 v) {
 }
 `;
 
-// 2. Helper: Curl Noise (Calculates the "spin" of the field)
+// 2. Helper: Curl Noise
 const curlNoise = `
 ${simplexNoise3D}
 
@@ -121,53 +108,35 @@ vec3 curlNoise( vec3 p ){
 // 3. Velocity Update Shader
 export const velocityShader = `
 uniform float uTime;
-uniform float uResonance; // Order
-uniform float uVitality;  // Chaos
-uniform float uSpeed;
-uniform sampler2D textureTarget; // The "Blueprint" from CPU
+uniform float uResonance;
+uniform float uVitality;
+uniform sampler2D textureTarget;
 
 ${curlNoise}
 
 void main() {
-    // Current pixel coordinates
     vec2 uv = gl_FragCoord.xy / resolution.xy;
-    
-    // Read current data
     vec3 pos = texture2D( texturePosition, uv ).xyz;
     vec3 vel = texture2D( textureVelocity, uv ).xyz;
-    
-    // Read target data (where the particle "wants" to go)
     vec3 target = texture2D( textureTarget, uv ).xyz;
 
-    // 1. ATTRACTION (Order)
-    // Force direction towards target
     vec3 attraction = target - pos;
     float dist = length(attraction);
     
-    // Normalize and apply resonance strength
-    // We add a small epsilon to prevent division by zero
-    vec3 forceOrder = normalize(attraction + 0.001) * dist * uResonance * 2.0;
+    // Slight increase in resonance force for sharper shapes
+    vec3 forceOrder = normalize(attraction + 0.001) * dist * uResonance * 3.0;
 
-    // 2. CURL NOISE (Chaos)
-    // Scale position for noise sampling
     vec3 noisePos = pos * 0.15; 
-    // Animate noise over time
     noisePos += vec3(uTime * 0.2);
     
     vec3 forceChaos = curlNoise(noisePos) * uVitality * 2.0;
 
-    // 3. INTEGRATION
-    // Combine forces
     vec3 acc = forceOrder + forceChaos;
-
-    // Apply inertia/friction
-    float friction = 0.9 - (uVitality * 0.05); // More chaos = less friction
+    float friction = 0.9 - (uVitality * 0.05);
     
-    // Update velocity
-    vel += acc * 0.016; // dt approx
+    vel += acc * 0.016;
     vel *= friction;
 
-    // Write output
     gl_FragColor = vec4( vel, 1.0 );
 }
 `;
@@ -178,53 +147,47 @@ void main() {
     vec2 uv = gl_FragCoord.xy / resolution.xy;
     vec3 pos = texture2D( texturePosition, uv ).xyz;
     vec3 vel = texture2D( textureVelocity, uv ).xyz;
-
-    // Simple Euler integration
     pos += vel;
-
     gl_FragColor = vec4( pos, 1.0 );
 }
 `;
 
-// 5. Render Vertex Shader (For the actual particles)
+// 5. Render Vertex Shader
 export const renderVertexShader = `
-attribute vec2 reference; // The UV coordinate for this particle
+attribute vec2 reference;
 uniform sampler2D texturePosition;
 uniform float uSize;
 
 varying vec3 vColor;
 
 void main() {
-    // Look up position from the texture calculated by GPGPU
     vec3 pos = texture2D( texturePosition, reference ).xyz;
-
-    // Standard Three.js mvp
     vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
     gl_Position = projectionMatrix * mvPosition;
-
-    // Size attenuation (particles get smaller when further away)
-    gl_PointSize = uSize * ( 300.0 / -mvPosition.z );
+    
+    // Standard size attenuation
+    gl_PointSize = uSize * ( 200.0 / -mvPosition.z );
 }
 `;
 
 // 6. Render Fragment Shader
 export const renderFragmentShader = `
-uniform vec3 uColor1;
-uniform vec3 uColor2;
-uniform float uVitality;
+uniform vec3 uColorChaos; // Expecting Red (0xff4400)
+uniform vec3 uColorOrder; // Expecting Cyan (0x00ffff)
+uniform float uStability; // 0.0 = Chaos, 1.0 = Order
 
 void main() {
-    // Create a soft circle
+    // Soft circle shape
     vec2 cxy = 2.0 * gl_PointCoord - 1.0;
     float r = dot(cxy, cxy);
     if (r > 1.0) discard;
 
-    // Mix colors based on vitality (this is static per frame, 
-    // but could be dynamic per particle if we passed velocity to frag shader)
-    vec3 finalColor = mix(uColor1, uColor2, 0.5);
+    // DYNAMIC COLOR MIXING
+    // This was the missing link. Now it reacts to the field state.
+    vec3 finalColor = mix(uColorChaos, uColorOrder, uStability);
     
-    // Soft edge alpha
-    float alpha = (1.0 - r) * 0.8;
+    // Low opacity for additive blending "dust" look
+    float alpha = (1.0 - r) * 0.12;
 
     gl_FragColor = vec4( finalColor, alpha );
 }
