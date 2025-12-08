@@ -116,8 +116,8 @@ uniform sampler2D textureTarget;
 uniform vec3 uMousePos;
 uniform float uMouseRadius;
 uniform float uMouseStrength;
-uniform int uMouseType; // 0=None, 1=Gravity (Right Click), 2=Flow (Left Click)
-uniform vec3 uMouseVel; // The speed/direction of the mouse
+uniform int uMouseType; 
+uniform vec3 uMouseVel;
 
 ${curlNoise}
 
@@ -130,6 +130,7 @@ void main() {
     // 1. BASE ATTRACTION
     vec3 attraction = target - pos;
     float dist = length(attraction);
+    // Standard resonance force for keeping shape
     vec3 forceOrder = normalize(attraction + 0.001) * dist * uResonance * 3.0;
 
     // 2. CHAOS
@@ -137,25 +138,24 @@ void main() {
     noisePos += vec3(uTime * 0.2);
     vec3 forceChaos = curlNoise(noisePos) * uVitality * 2.0;
 
-    // 3. USER INTERACTION (The Painting Engine)
+    // 3. USER INTERACTION
     vec3 forceInteract = vec3(0.0);
     
     if (uMouseType > 0) {
         float dMouse = distance(pos, uMousePos);
         
-        // Check if particle is inside the brush
         if (dMouse < uMouseRadius) {
-            float influence = 1.0 - (dMouse / uMouseRadius); // Stronger at center
+            float influence = 1.0 - (dMouse / uMouseRadius); 
             
             if (uMouseType == 1) {
-                // GRAVITY WELL (Right Click): Pull towards mouse
+                // GRAVITY WELL (Right Click): Reduced force 100.0 -> 30.0
                 vec3 dir = normalize(uMousePos - pos);
-                forceInteract += dir * uMouseStrength * influence * 100.0;
+                forceInteract += dir * uMouseStrength * influence * 30.0;
             } 
             else if (uMouseType == 2) {
-                // FLOW (Left Click): Push along mouse direction (Stirring)
-                // We add the mouse velocity to the particle
-                forceInteract += uMouseVel * uMouseStrength * influence * 300.0;
+                // FLOW (Left Click): Reduced force 300.0 -> 60.0
+                // Gentle stirring instead of blasting
+                forceInteract += uMouseVel * uMouseStrength * influence * 60.0;
             }
         }
     }
@@ -194,6 +194,8 @@ void main() {
     vec3 pos = texture2D( texturePosition, reference ).xyz;
     vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
     gl_Position = projectionMatrix * mvPosition;
+    
+    // Standard size attenuation
     gl_PointSize = uSize * ( 200.0 / -mvPosition.z );
 }
 `;
@@ -209,7 +211,10 @@ void main() {
     float r = dot(cxy, cxy);
     if (r > 1.0) discard;
 
+    // COLOR RESTORED: Uses Stability to shift Red -> Blue
     vec3 finalColor = mix(uColorChaos, uColorOrder, uStability);
+    
+    // VISUAL FIX: Low opacity (0.12) to prevent white blob
     float alpha = (1.0 - r) * 0.12;
 
     gl_FragColor = vec4( finalColor, alpha );
