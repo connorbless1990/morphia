@@ -1,282 +1,194 @@
 /**
- * Swarm Module
- * Main particle system for the morphic field visualization
- * Single Responsibility: Particle physics simulation and rendering
+ * GPUSwarm Module
+ * High-performance GPGPU particle system
+ * Replaces the CPU-bound Swarm.js
  */
 
 import { Architect } from '../geometry/Architect.js';
 import { APP_CONFIG, COLORS } from '../config/constants.js';
-import { createGlowTexture } from '../utils/helpers.js';
+import { velocityShader, positionShader, renderVertexShader, renderFragmentShader } from '../shaders/simulationShaders.js';
 
 export class Swarm {
     constructor(scene, simplex, count = APP_CONFIG.SWARM_PARTICLE_COUNT) {
-        this.count = count;
         this.scene = scene;
         this.simplex = simplex;
         this.architect = new Architect(simplex);
+        
+        // Texture size must be power of 2
+        this.texSize = Math.ceil(Math.sqrt(count));
+        this.count = this.texSize * this.texSize;
 
-        // Position, velocity, and target arrays
-        this.pos = new Float32Array(this.count * 3);
-        this.vel = new Float32Array(this.count * 3);
-        this.target = new Float32Array(this.count * 3);
-
-        // UNIVERSE TELEPORTER
-        this.noiseOffset = new THREE.Vector3(
-            Math.random() * 10000.0,
-            Math.random() * 10000.0,
-            Math.random() * 10000.0
-        );
-
-        // Initialize with chaos
-        this.architect.generateChaos(this.pos, this.count);
-        this.architect.generateChaos(this.target, this.count);
-
-        // Create instanced mesh
-        this.createMesh();
-
-        // Camera position for billboard effect
-        this.cameraPosition = new THREE.Vector3(0, 0, 10);
-
-        // --- PERFORMANCE FIX: OBJECT POOLING ---
-        // Pre-allocate a scratch vector to reuse every frame
-        // This prevents creating 24,000 new objects per frame (Garbage Collection stutter)
-        this._curlScratch = new THREE.Vector3(); 
+        this.gpuCompute = null;
+        this.mesh = null;
     }
 
     /**
-     * Create the instanced mesh for particles
-     * @private
+     * Explicit initialization requiring the renderer
      */
-    createMesh() {
-        const tex = createGlowTexture();
-        const geo = new THREE.PlaneGeometry(APP_CONFIG.PARTICLE_SIZE, APP_CONFIG.PARTICLE_SIZE);
+    initGPGPU(renderer) {
+        if (!renderer) {
+            console.error("GPUSwarm: Renderer required for initialization");
+            return;
+        }
 
-        const mat = new THREE.MeshBasicMaterial({
-            map: tex,
-            color: 0xffffff,
+        try {
+            this.gpuCompute = new THREE.GPUComputationRenderer(this.texSize, this.texSize, renderer);
+        } catch (e) {
+            console.warn("GPGPU not supported on this device.", e);
+            return;
+        }
+
+        // 1. Create Initial Data (Textures)
+        const dtPosition = this.gpuCompute.createTexture();
+        const dtVelocity = this.gpuCompute.createTexture();
+        const dtTarget = this.gpuCompute.createTexture(); 
+
+        this.fillTextures(dtPosition, dtVelocity, dtTarget);
+
+        // 2. Create Variables
+        this.velocityVariable = this.gpuCompute.addVariable("textureVelocity", velocityShader, dtVelocity);
+        this.positionVariable = this.gpuCompute.addVariable("texturePosition", positionShader, dtPosition);
+        
+        this.targetTexture = dtTarget;
+
+        // 3. Dependency Wiring
+        this.gpuCompute.setVariableDependencies(this.velocityVariable, [this.positionVariable, this.velocityVariable]);
+        this.gpuCompute.setVariableDependencies(this.positionVariable, [this.positionVariable, this.velocityVariable]);
+
+        // 4. Uniforms
+        this.velocityUniforms = this.velocityVariable.material.uniforms;
+        this.velocityUniforms['uTime'] = { value: 0.0 };
+        this.velocityUniforms['uResonance'] = { value: 0.5 };
+        this.velocityUniforms['uVitality'] = { value: 0.5 };
+        this.velocityUniforms['textureTarget'] = { value: this.targetTexture };
+
+        // 5. Initialize
+        const error = this.gpuCompute.init();
+        if (error !== null) {
+            console.error("GPGPU Init Error:", error);
+        }
+
+        // 6. Create Visuals
+        this.createVisuals();
+    }
+
+    fillTextures(texturePos, textureVel, textureTarget) {
+        const posArray = texturePos.image.data;
+        const velArray = textureVel.image.data;
+        const targetArray = textureTarget.image.data;
+
+        const chaosPositions = new Float32Array(this.count * 3);
+        this.architect.generateChaos(chaosPositions, this.count);
+
+        for (let k = 0, kl = posArray.length; k < kl; k += 4) {
+            const i = k / 4;
+            // Position (Chaos)
+            posArray[k + 0] = chaosPositions[i * 3];
+            posArray[k + 1] = chaosPositions[i * 3 + 1];
+            posArray[k + 2] = chaosPositions[i * 3 + 2];
+            posArray[k + 3] = 1.0;
+
+            // Target (Same as pos initially)
+            targetArray[k + 0] = chaosPositions[i * 3];
+            targetArray[k + 1] = chaosPositions[i * 3 + 1];
+            targetArray[k + 2] = chaosPositions[i * 3 + 2];
+            targetArray[k + 3] = 1.0;
+
+            // Velocity (Zero)
+            velArray[k + 0] = 0;
+            velArray[k + 1] = 0;
+            velArray[k + 2] = 0;
+            velArray[k + 3] = 1.0;
+        }
+    }
+
+    createVisuals() {
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(this.count * 3); 
+        const references = new Float32Array(this.count * 2); 
+
+        for (let i = 0; i < this.count; i++) {
+            const x = (i % this.texSize) / this.texSize;
+            const y = Math.floor(i / this.texSize) / this.texSize;
+            references[i * 2] = x;
+            references[i * 2 + 1] = y;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('reference', new THREE.BufferAttribute(references, 2));
+
+        this.renderMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                texturePosition: { value: null },
+                uSize: { value: APP_CONFIG.PARTICLE_SIZE * 1.5 }, 
+                // COLOR FIX: Explicit colors for Chaos (Red) and Order (Cyan)
+                uColorChaos: { value: new THREE.Color(COLORS.CHAOS) },
+                uColorOrder: { value: new THREE.Color(COLORS.ORDER) },
+                // STABILITY FIX: Dynamic value to control the mix
+                uStability: { value: 0.0 }
+            },
+            vertexShader: renderVertexShader,
+            fragmentShader: renderFragmentShader,
             transparent: true,
-            opacity: 0.9,
             depthWrite: false,
-            blending: THREE.AdditiveBlending,
-            side: THREE.DoubleSide
+            blending: THREE.AdditiveBlending
         });
 
-        this.mesh = new THREE.InstancedMesh(geo, mat, this.count);
-        this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-        this.mesh.frustumCulled = false;
+        this.mesh = new THREE.Points(geometry, this.renderMaterial);
+        this.mesh.frustumCulled = false; 
         this.scene.add(this.mesh);
-
-        this.dummy = new THREE.Object3D();
-        this.color = new THREE.Color();
     }
 
-    /**
-     * Set the target shape
-     * @param {string} name - Shape name
-     * @param {number} evolution - Evolution factor
-     */
     setShape(name, evolution) {
-        this.target.set(this.architect.generateTargets(name, this.count, evolution));
+        if (!this.targetTexture) return;
+
+        const targets = this.architect.generateTargets(name, this.count, evolution);
+        const targetArray = this.targetTexture.image.data;
+        for (let i = 0; i < this.count; i++) {
+            const k = i * 4;
+            targetArray[k + 0] = targets[i * 3];
+            targetArray[k + 1] = targets[i * 3 + 1];
+            targetArray[k + 2] = targets[i * 3 + 2];
+            targetArray[k + 3] = 1.0;
+        }
+        
+        this.targetTexture.needsUpdate = true;
+        this.velocityUniforms['textureTarget'].value = this.targetTexture;
     }
 
-    /**
-     * Sculpt the field by modifying targets (Morphic Rewriting)
-     * @param {THREE.Vector3} point - Sculpt center
-     * @param {number} radius - Sculpt radius
-     * @param {number} strength - Sculpt strength
-     */
     sculpt(point, radius, strength) {
-        const rSq = radius * radius;
-
-        for (let i = 0; i < this.count; i++) {
-            const ix = i * 3, iy = i * 3 + 1, iz = i * 3 + 2;
-
-            // Check distance between particle and brush
-            const dx = this.pos[ix] - point.x;
-            const dy = this.pos[iy] - point.y;
-            const dz = this.pos[iz] - point.z;
-            const distSq = dx * dx + dy * dy + dz * dz;
-
-            if (distSq < rSq) {
-                // Calculate influence falloff
-                const factor = 1 - (distSq / rSq);
-
-                // Pull TARGET towards mouse (rewrite the blueprint)
-                const tx = point.x - this.target[ix];
-                const ty = point.y - this.target[iy];
-                const tz = point.z - this.target[iz];
-
-                // Move the blueprint closer to mouse
-                this.target[ix] += tx * strength * factor;
-                this.target[iy] += ty * strength * factor;
-                this.target[iz] += tz * strength * factor;
-
-                // Add velocity to "wake up" the particle
-                this.vel[ix] += tx * strength * 0.1;
-                this.vel[iy] += ty * strength * 0.1;
-                this.vel[iz] += tz * strength * 0.1;
-            }
-        }
     }
 
-    /**
-     * Randomize all targets to chaos
-     */
     scramble() {
-        this.architect.generateChaos(this.target, this.count);
+        this.setShape('scatter', 1.0);
     }
 
-    /**
-     * Apply explosive force to all particles
-     */
     explode() {
-        for (let i = 0; i < this.count; i++) {
-            const ix = i * 3, iy = i * 3 + 1, iz = i * 3 + 2;
-            this.vel[ix] += (Math.random() - 0.5) * 5.0;
-            this.vel[iy] += (Math.random() - 0.5) * 5.0;
-            this.vel[iz] += (Math.random() - 0.5) * 5.0;
-        }
     }
 
-    /**
-     * CALCULATE CURL (Optimized)
-     * Writes result to this._curlScratch instead of creating new objects
-     */
-    computeCurl(x, y, z, time) {
-        const eps = 0.1; // Epsilon (distance to sample neighbor)
-
-        // Find the "slope" of the noise in all 3 directions
-        // Rate of change in Y
-        const n1 = this.simplex.noise4D(x, y + eps, z, time); 
-        const n2 = this.simplex.noise4D(x, y - eps, z, time); 
-        const a = (n1 - n2) / (2 * eps);
-
-        // Rate of change in Z
-        const n3 = this.simplex.noise4D(x, y, z + eps, time); 
-        const n4 = this.simplex.noise4D(x, y, z - eps, time); 
-        const b = (n3 - n4) / (2 * eps);
-
-        // Rate of change in X
-        const n5 = this.simplex.noise4D(x + eps, y, z, time); 
-        const n6 = this.simplex.noise4D(x - eps, y, z, time); 
-        const c = (n5 - n6) / (2 * eps);
-
-        // WRITE TO SCRATCH VECTOR INSTEAD OF RETURNING NEW
-        this._curlScratch.set(a - b, b - c, c - a);
-    }
-
-    /**
-     * Update particle simulation
-     */
     update(time, resonance, vitality, stability, evolution, breathCycle) {
-        const dt = APP_CONFIG.DELTA_TIME;
-        const breath = Math.sin(time * 0.5) * 0.1 + 1.0;
+        if (!this.gpuCompute) return;
+
+        this.velocityUniforms['uTime'].value = time;
+        this.velocityUniforms['uResonance'].value = resonance;
+        this.velocityUniforms['uVitality'].value = vitality;
+
+        this.gpuCompute.compute();
+
+        this.renderMaterial.uniforms.texturePosition.value = this.gpuCompute.getCurrentRenderTarget(this.positionVariable).texture;
         
-        // VISUAL FIX 1: Diminishing returns on stability
-        const visualStability = Math.min(stability, 1.2);
-        
-        // Color interpolation clamp
-        const colorStability = Math.min(stability, 1.0);
-
-        // Dynamic grip - high vitality weakens resonance
-        const chaosDampener = 1.0 - (vitality * 0.8);
-        
-        // VISUAL FIX 2: Clamp the maximum attraction force
-        const gravityCap = 1.0 + Math.min(stability, 1.5); 
-        const effectiveResonance = Math.max(resonance, 0.2) * gravityCap * chaosDampener;
-
-        // Color interpolation
-        const colorChaos = new THREE.Color(COLORS.CHAOS);
-        const colorOrder = new THREE.Color(COLORS.ORDER);
-        const currentColor = new THREE.Color().lerpColors(colorChaos, colorOrder, colorStability);
-
-        // VISUAL FIX 3: Dynamic Field Scaling (Zoom In)
-        const timeScale = time * (0.2 * evolution);
-        const fieldScale = 0.15 / (1.0 + (evolution * 0.5)); 
-        
-        const fieldStrength = 0.5 + (vitality * 2.0);
-        const breathScale = 1.0 + (breathCycle * (0.15 + (visualStability * 0.05)));
-
-        for (let i = 0; i < this.count; i++) {
-            const ix = i * 3, iy = i * 3 + 1, iz = i * 3 + 2;
-
-            // 1. ATTRACTION (The Blueprint)
-            let fx = (this.target[ix] * breathScale - this.pos[ix]) * effectiveResonance * 5.0;
-            let fy = (this.target[iy] * breathScale - this.pos[iy]) * effectiveResonance * 5.0;
-            let fz = (this.target[iz] * breathScale - this.pos[iz]) * effectiveResonance * 5.0;
-
-            // 2. VORTICITY (The Natural Flow)
-            // This updates this._curlScratch directly
-            this.computeCurl(
-                (this.pos[ix] * fieldScale) + this.noiseOffset.x, 
-                (this.pos[iy] * fieldScale) + this.noiseOffset.y, 
-                (this.pos[iz] * fieldScale) + this.noiseOffset.z, 
-                timeScale
-            );
-
-            // Apply the curl using the scratch vector
-            fx += this._curlScratch.x * vitality * fieldStrength;
-            fy += this._curlScratch.y * vitality * fieldStrength;
-            fz += this._curlScratch.z * vitality * fieldStrength;
-
-            // Containment force
-            const d2 = this.pos[ix] * this.pos[ix] +
-                       this.pos[iy] * this.pos[iy] +
-                       this.pos[iz] * this.pos[iz];
-
-            if (d2 > APP_CONFIG.CONTAINMENT_RADIUS_SQ) {
-                const pull = -0.01;
-                fx += this.pos[ix] * pull;
-                fy += this.pos[iy] * pull;
-                fz += this.pos[iz] * pull;
-            }
-
-            // Apply forces
-            this.vel[ix] += fx * dt;
-            this.vel[iy] += fy * dt;
-            this.vel[iz] += fz * dt;
-
-            // Friction (increases with chaos)
-            const fric = APP_CONFIG.FRICTION_BASE - (vitality * APP_CONFIG.FRICTION_CHAOS_FACTOR);
-            this.vel[ix] *= fric;
-            this.vel[iy] *= fric;
-            this.vel[iz] *= fric;
-
-            // Update position
-            this.pos[ix] += this.vel[ix];
-            this.pos[iy] += this.vel[iy];
-            this.pos[iz] += this.vel[iz];
-
-            // Update instance
-            this.dummy.position.set(this.pos[ix], this.pos[iy], this.pos[iz]);
-            this.dummy.lookAt(this.cameraPosition);
-            
-            // Scale clamped by visualStability
-            const s = (0.5 + (visualStability * 0.5)) * (0.8 + (breath * 0.4));
-            
-            this.dummy.scale.set(s, s, s);
-            this.dummy.updateMatrix();
-            this.mesh.setMatrixAt(i, this.dummy.matrix);
-            this.mesh.setColorAt(i, currentColor);
-        }
-
-        this.mesh.instanceMatrix.needsUpdate = true;
-        this.mesh.instanceColor.needsUpdate = true;
+        // CRITICAL FIX: Pass stability to the fragment shader
+        // This makes the particles RED when unstable and BLUE when stable
+        this.renderMaterial.uniforms.uStability.value = stability;
     }
 
-    /**
-     * Set camera position for billboard effect
-     */
-    setCameraPos(pos) {
-        this.cameraPosition = pos;
-    }
+    setCameraPos(pos) {}
 
-    /**
-     * Cleanup resources
-     */
     dispose() {
-        this.scene.remove(this.mesh);
-        this.mesh.geometry.dispose();
-        this.mesh.material.dispose();
+        if (this.mesh) {
+            this.scene.remove(this.mesh);
+            this.mesh.geometry.dispose();
+            this.mesh.material.dispose();
+        }
     }
 }
