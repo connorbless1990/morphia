@@ -112,6 +112,13 @@ uniform float uResonance;
 uniform float uVitality;
 uniform sampler2D textureTarget;
 
+// --- INTERACTION UNIFORMS ---
+uniform vec3 uMousePos;
+uniform float uMouseRadius;
+uniform float uMouseStrength;
+uniform int uMouseType; // 0=None, 1=Gravity (Right Click), 2=Flow (Left Click)
+uniform vec3 uMouseVel; // The speed/direction of the mouse
+
 ${curlNoise}
 
 void main() {
@@ -120,18 +127,41 @@ void main() {
     vec3 vel = texture2D( textureVelocity, uv ).xyz;
     vec3 target = texture2D( textureTarget, uv ).xyz;
 
+    // 1. BASE ATTRACTION
     vec3 attraction = target - pos;
     float dist = length(attraction);
-    
-    // Slight increase in resonance force for sharper shapes
     vec3 forceOrder = normalize(attraction + 0.001) * dist * uResonance * 3.0;
 
+    // 2. CHAOS
     vec3 noisePos = pos * 0.15; 
     noisePos += vec3(uTime * 0.2);
-    
     vec3 forceChaos = curlNoise(noisePos) * uVitality * 2.0;
 
-    vec3 acc = forceOrder + forceChaos;
+    // 3. USER INTERACTION (The Painting Engine)
+    vec3 forceInteract = vec3(0.0);
+    
+    if (uMouseType > 0) {
+        float dMouse = distance(pos, uMousePos);
+        
+        // Check if particle is inside the brush
+        if (dMouse < uMouseRadius) {
+            float influence = 1.0 - (dMouse / uMouseRadius); // Stronger at center
+            
+            if (uMouseType == 1) {
+                // GRAVITY WELL (Right Click): Pull towards mouse
+                vec3 dir = normalize(uMousePos - pos);
+                forceInteract += dir * uMouseStrength * influence * 100.0;
+            } 
+            else if (uMouseType == 2) {
+                // FLOW (Left Click): Push along mouse direction (Stirring)
+                // We add the mouse velocity to the particle
+                forceInteract += uMouseVel * uMouseStrength * influence * 300.0;
+            }
+        }
+    }
+
+    // 4. INTEGRATION
+    vec3 acc = forceOrder + forceChaos + forceInteract;
     float friction = 0.9 - (uVitality * 0.05);
     
     vel += acc * 0.016;
@@ -164,29 +194,22 @@ void main() {
     vec3 pos = texture2D( texturePosition, reference ).xyz;
     vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
     gl_Position = projectionMatrix * mvPosition;
-    
-    // Standard size attenuation
     gl_PointSize = uSize * ( 200.0 / -mvPosition.z );
 }
 `;
 
 // 6. Render Fragment Shader
 export const renderFragmentShader = `
-uniform vec3 uColorChaos; // Expecting Red (0xff4400)
-uniform vec3 uColorOrder; // Expecting Cyan (0x00ffff)
-uniform float uStability; // 0.0 = Chaos, 1.0 = Order
+uniform vec3 uColorChaos;
+uniform vec3 uColorOrder;
+uniform float uStability;
 
 void main() {
-    // Soft circle shape
     vec2 cxy = 2.0 * gl_PointCoord - 1.0;
     float r = dot(cxy, cxy);
     if (r > 1.0) discard;
 
-    // DYNAMIC COLOR MIXING
-    // This was the missing link. Now it reacts to the field state.
     vec3 finalColor = mix(uColorChaos, uColorOrder, uStability);
-    
-    // Low opacity for additive blending "dust" look
     float alpha = (1.0 - r) * 0.12;
 
     gl_FragColor = vec4( finalColor, alpha );

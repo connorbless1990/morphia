@@ -25,11 +25,11 @@ export class App {
         this.uiController = new UIController();
 
         const scene = this.sceneManager.getScene();
-        const renderer = this.sceneManager.getRenderer(); // Required for GPGPU
+        const renderer = this.sceneManager.getRenderer();
 
         this.ghost = new GhostField(scene);
         this.swarm = new Swarm(scene, this.simplex);
-        this.swarm.initGPGPU(renderer); // <--- THIS MATCHES THE NEW SWARM CLASS
+        this.swarm.initGPGPU(renderer);
 
         this.ether = new Ether(scene, this.simplex);
 
@@ -58,7 +58,6 @@ export class App {
             this.network.tuneIn(shape, params);
         });
 
-        // Network Debounce Fix
         const debouncedTuneIn = debounce((shape, params) => {
             this.network.tuneIn(shape, params);
         }, 500);
@@ -101,15 +100,19 @@ export class App {
 
         this.inputController.updateIntersection();
 
+        // --- INTERACTION LOGIC ---
         if (mode === MODES.EXPERIMENTAL) {
             const sculptParams = this.inputController.getSculptParams();
-            if (sculptParams) {
-                this.swarm.sculpt(sculptParams.point, sculptParams.radius, sculptParams.strength);
-                if (this.inputController.isPrecisionSculpting()) {
-                    this.brain.setStability(Math.min(1.0, this.brain.getStability() + 0.002));
-                }
+            
+            // We pass the whole object (or null) to Swarm
+            // Swarm handles the "reset" internally if params is null
+            this.swarm.sculpt(sculptParams);
+
+            if (sculptParams && this.inputController.isPrecisionSculpting()) {
+                this.brain.setStability(Math.min(1.0, this.brain.getStability() + 0.002));
             }
         }
+        // -------------------------
 
         const stability = this.brain.update(time, effectiveResonance, params.vitality);
         this.swarm.update(time, effectiveResonance, params.vitality, stability, params.evolution, breathCycle);
